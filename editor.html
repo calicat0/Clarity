@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Clarity Map Editor</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #ddd;
+            margin: 0;
+            padding: 12px;
+            font-size: 13px;
+        }
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+        }
+        button,
+        input,
+        select,
+        textarea {
+            font-family: monospace;
+            font-size: 12px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 3px 6px;
+        }
+        button:hover {
+            background: #333;
+        }
+        button.active {
+            background: #0ff;
+            color: #000;
+            border-color: #0ff;
+        }
+        label {
+            margin-right: 6px;
+        }
+        #toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #444;
+        }
+        #toolbar .sep {
+            width: 1px;
+            height: 24px;
+            background: #555;
+            margin: 0 4px;
+        }
+        #toolbar input[name="mapname"] {
+            width: 180px;
+        }
+
+        #palette-section {
+            border: 1px solid #444;
+            padding: 6px;
+            margin-bottom: 8px;
+            background: #222;
+        }
+        #palette-tiles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+        .palette-tile {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 3px #000, 0 0 3px #000;
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 2px;
+        }
+        .palette-tile.selected {
+            border-color: #0ff;
+            box-shadow: 0 0 5px #0ff;
+        }
+        .palette-tile:hover {
+            border-color: #888;
+        }
+        #palette-editor {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .tile-editor {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 4px;
+            background: #1a1a1a;
+            border-radius: 3px;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+        .tile-editor input[type="number"] {
+            width: 42px;
+            font-size: 10px;
+            padding: 1px 3px;
+        }
+        .tile-editor input[type="checkbox"] {
+            margin: 0;
+            vertical-align: middle;
+        }
+        .tile-editor input[type="color"] {
+            width: 28px;
+            height: 22px;
+            padding: 0;
+            border: 1px solid #555;
+            background: none;
+            cursor: pointer;
+        }
+        .tile-editor .tile-id {
+            min-width: 20px;
+            text-align: right;
+            color: #888;
+        }
+        .tile-editor .tile-name {
+            font-size: 10px;
+            color: #666;
+            min-width: 44px;
+            text-align: left;
+        }
+
+        #main {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        #grid-col {
+            flex-grow: 1;
+            min-width: 0;
+        }
+        #grid-wrap {
+            border: 2px solid #444;
+            display: inline-block;
+            background: #222;
+            overflow: auto;
+            max-height: calc(100vh - 140px);
+            max-width: 100%;
+        }
+        #grid {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* Side panel */
+        #side-panel {
+            width: 280px;
+            flex-shrink: 0;
+            border: 1px solid #444;
+            background: #222;
+            padding: 6px;
+            position: relative;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+            transition: width 0.25s, padding 0.25s, border-color 0.25s;
+        }
+        #side-panel.closed {
+            width: 0;
+            padding: 0;
+            border-color: transparent;
+            overflow: hidden;
+        }
+        #side-close {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            padding: 2px 5px;
+            background: #111;
+            border: 1px solid #555;
+            z-index: 10;
+        }
+
+        /* Collapsible sections within the side panel */
+        .side-section {
+            margin-bottom: 6px;
+        }
+        .section-header {
+            cursor: pointer;
+            user-select: none;
+            font-weight: bold;
+            padding: 4px 0;
+            font-size: 12px;
+            border-bottom: 1px solid #333;
+        }
+        .section-header:hover {
+            color: #fff;
+        }
+        .section-header .arrow {
+            display: inline-block;
+            width: 14px;
+        }
+        .section-body {
+            padding: 4px 0 4px 4px;
+        }
+        .section-body.closed {
+            display: none;
+        }
+
+        /* Map props */
+        .prop-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+            padding: 2px 0;
+        }
+        .prop-row label {
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .prop-row input[type="number"] {
+            width: 48px;
+            font-size: 11px;
+            padding: 1px 3px;
+        }
+        .prop-row input[type="color"] {
+            width: 28px;
+            height: 22px;
+            padding: 0;
+            border: 1px solid #555;
+            background: none;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        /* Grid controls */
+        #grid-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+        }
+        #grid-controls button {
+            font-size: 11px;
+            padding: 2px 6px;
+        }
+        #grid-controls input[type="range"] {
+            width: 80px;
+            vertical-align: middle;
+        }
+
+        /* Scripts */
+        .script-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 4px;
+            margin: 3px 0;
+        }
+        .script-row label {
+            min-width: 80px;
+            font-size: 11px;
+            padding-top: 2px;
+        }
+        .script-row textarea {
+            flex-grow: 1;
+            height: 36px;
+            font-size: 11px;
+            resize: vertical;
+        }
+
+        /* Presets */
+        .presets-body {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .presets-body button {
+            font-size: 11px;
+            padding: 4px 10px;
+        }
+
+        #status {
+            font-size: 11px;
+            color: #888;
+        }
+
+        #side-reopen {
+            display: none;
+            position: fixed;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            padding: 10px 4px;
+            writing-mode: vertical-rl;
+            cursor: pointer;
+            background: #222;
+            border: 1px solid #555;
+            border-right: none;
+            border-radius: 4px 0 0 4px;
+            font-size: 11px;
+        }
+        #side-reopen:hover {
+            background: #333;
+        }
+
+        /* New-map dialog */
+        #modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        #modal-overlay.open {
+            display: flex;
+        }
+        #modal-box {
+            background: #222;
+            border: 2px solid #555;
+            border-radius: 4px;
+            padding: 20px 24px;
+            min-width: 300px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+        #modal-box h2 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #fff;
+        }
+        .size-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .size-grid button {
+            flex: 1 0 calc(50% - 4px);
+            padding: 10px 8px;
+            font-size: 13px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .size-grid button:hover {
+            background: #444;
+        }
+        .custom-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+        }
+        .custom-row label {
+            font-size: 11px;
+            color: #aaa;
+            white-space: nowrap;
+        }
+        .custom-row input {
+            width: 52px;
+            font-size: 12px;
+            padding: 2px 4px;
+        }
+        .custom-row button {
+            flex: 1;
+            padding: 6px 8px;
+        }
+        #modal-close {
+            margin-top: 12px;
+            width: 100%;
+            text-align: center;
+        }
+        #custom-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        #custom-modal-overlay.open {
+            display: flex;
+        }
+        #custom-modal-box {
+            background: #222;
+            border: 2px solid #555;
+            border-radius: 4px;
+            padding: 20px 24px;
+            min-width: 520px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+        #custom-modal-box h2 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #fff;
+        }
+        .custom-modal-body .prop-row {
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Clarity Map Editor</h1>
+
+    <div id="toolbar">
+        <input type="file" id="file-input" accept=".js">
+        <button onclick="showNewDialog()">New</button>
+        <button onclick="loadFile()">Load Map</button>
+        <button onclick="saveMap()">Save As...</button>
+        <span class="sep"></span>
+        <label>Name:</label>
+        <input type="text" name="mapname" onchange="mapData.name=this.value;pushHistory()" placeholder="Level name">
+        <span class="sep"></span>
+        <button id="eraser-btn" onclick="toggleEraser()">Eraser</button>
+        <span class="sep"></span>
+        <button onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
+        <button onclick="redo()" id="redo-btn" disabled title="Redo (Ctrl+Shift+Z)">↪ Redo</button>
+        <span class="sep"></span>
+        <button onclick="showAddCustomDialog()">+ Add Block</button>
+        <span class="sep"></span>
+        <button id="side-toggle" onclick="toggleSidePanel()">☰ Props</button>
+        <span id="status"></span>
+    </div>
+
+    <div id="palette-section">
+        <div id="palette-tiles"></div>
+    </div>
+
+    <div id="main">
+        <div id="grid-col">
+            <div id="grid-wrap">
+                <canvas id="grid"></canvas>
+            </div>
+        </div>
+        <div id="side-panel">
+            <button id="side-close" onclick="toggleSidePanel()">✕</button>
+            <div id="side-content">
+                <div class="side-section">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▾</span> Map Settings</div>
+                    <div class="section-body" id="props-panel"></div>
+                </div>
+                <div class="side-section">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▾</span> Grid</div>
+                    <div class="section-body">
+                        <div id="grid-controls">
+                            <button onclick="addRow()">+Row</button>
+                            <button onclick="delRow()">-Row</button>
+                            <button onclick="addCol()">+Col</button>
+                            <button onclick="delCol()">-Col</button>
+                            <label>Zoom:</label>
+                            <input type="range" min="10" max="48" value="28" oninput="setZoom(parseInt(this.value))">
+                            <span id="zoom-label">28</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="side-section">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▾</span> Scripts</div>
+                    <div class="section-body" id="scripts-editor"></div>
+                </div>
+                <div class="side-section">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▾</span> Tile Properties</div>
+                    <div class="section-body" id="palette-editor"></div>
+                </div>
+                <div class="side-section">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Presets</div>
+                    <div class="section-body closed">
+                        <div class="presets-body" id="presets-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button id="side-reopen" onclick="toggleSidePanel()">◀ Props</button>
+
+    <div id="modal-overlay">
+        <div id="modal-box">
+            <h2>New Map</h2>
+            <div class="size-grid">
+                <button onclick="createNewMap(20,15)">Small &nbsp;20×15</button>
+                <button onclick="createNewMap(30,20)">Medium 30×20</button>
+                <button onclick="createNewMap(40,25)">Large &nbsp;40×25</button>
+                <button onclick="createNewMap(50,15)">Wide &nbsp;&nbsp;50×15</button>
+                <button onclick="createNewMap(20,30)">Tall &nbsp;&nbsp;&nbsp;20×30</button>
+                <button onclick="createNewMap(60,35)">Huge &nbsp;&nbsp;60×35</button>
+            </div>
+            <div class="custom-row">
+                <label>W:</label><input type="number" id="new-w" value="30" min="5" max="100">
+                <label>H:</label><input type="number" id="new-h" value="20" min="5" max="100">
+                <button onclick="createNewMap(+document.getElementById('new-w').value,+document.getElementById('new-h').value)">Create</button>
+            </div>
+            <button id="modal-close" onclick="hideNewDialog()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="custom-modal-overlay">
+        <div id="custom-modal-box">
+            <h2 id="custom-modal-title">Add Custom Block</h2>
+            <input type="hidden" id="custom-edit-id" value="">
+            <div class="custom-modal-body">
+                <div class="prop-row">
+                    <label>Name: <input type="text" id="custom-name" placeholder="e.g. Red Key" style="width:140px"></label>
+                    <label>ID: <span id="custom-id-display">12</span> (auto)</label>
+                    <label>Colour: <input type="color" id="custom-colour" value="#FF0000"></label>
+                </div>
+                <div class="prop-row">
+                    <label><input type="checkbox" id="custom-solid"> Solid</label>
+                    <label>Bounce: <input type="number" id="custom-bounce" step="0.05" value="0" style="width:48px"></label>
+                    <label><input type="checkbox" id="custom-jump"> Jump-thru</label>
+                    <label><input type="checkbox" id="custom-fore"> Foreground</label>
+                </div>
+                <div class="prop-row">
+                    <label>Friction X: <input type="number" id="custom-friction-x" step="0.05" value="0" style="width:52px"></label>
+                    <label>Y: <input type="number" id="custom-friction-y" step="0.05" value="0" style="width:52px"></label>
+                    <label>Gravity X: <input type="number" id="custom-gravity-x" step="0.05" value="0" style="width:52px"></label>
+                    <label>Y: <input type="number" id="custom-gravity-y" step="0.05" value="0" style="width:52px"></label>
+                </div>
+                <div class="prop-row">
+                    <label><input type="checkbox" id="custom-is-key"> Is Key</label>
+                    <label>Unlocks Door ID: <input type="number" id="custom-unlocks" value="0" min="0" style="width:48px"></label>
+                    <label><input type="checkbox" id="custom-is-door"> Is Door</label>
+                    <label>Locked by Key ID: <input type="number" id="custom-lock-key" value="0" min="0" style="width:48px"></label>
+                </div>
+                <div class="prop-row">
+                    <label><input type="checkbox" id="custom-colour-change"> Colour Change</label>
+                    <label><input type="radio" name="cc-mode" id="cc-random" checked> Random</label>
+                    <label><input type="radio" name="cc-mode" id="cc-custom"> Custom: <input type="color" id="custom-cc-colour" value="#FF9900"></label>
+                </div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:6px;">
+                <button onclick="confirmCustomBlock()" id="custom-modal-confirm">Add Tile</button>
+                <button onclick="hideCustomDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var mapData = null;
+        var selectedId = 0;
+        var eraserOn = false;
+        var TILE = 28;
+        var painting = false;
+        var defaultTileNames = ['air', 'floor', 'brick', 'water', 'platform', 'bounce', 'wall', 'shift', 'goal', 'lava', 'block', 'key'];
+        var undoStack = [];
+        var undoIndex = -1;
+        var undoMax = 100;
+        var skipHistory = false;
+        var painted = false;
+
+        function pushHistory() {
+            if (skipHistory || !mapData) return;
+            undoStack = undoStack.slice(0, undoIndex + 1);
+            undoStack.push(JSON.parse(JSON.stringify(mapData)));
+            if (undoStack.length > undoMax) undoStack.shift();
+            undoIndex = undoStack.length - 1;
+            updateUndoButtons();
+            saveToStorage();
+        }
+
+        function undo() {
+            if (undoIndex <= 0) return;
+            undoIndex--;
+            skipHistory = true;
+            loadMapData(JSON.parse(JSON.stringify(undoStack[undoIndex])));
+            skipHistory = false;
+            updateUndoButtons();
+            saveToStorage();
+        }
+
+        function redo() {
+            if (undoIndex >= undoStack.length - 1) return;
+            undoIndex++;
+            skipHistory = true;
+            loadMapData(JSON.parse(JSON.stringify(undoStack[undoIndex])));
+            skipHistory = false;
+            updateUndoButtons();
+            saveToStorage();
+        }
+
+        function updateUndoButtons() {
+            var undoBtn = document.getElementById('undo-btn');
+            var redoBtn = document.getElementById('redo-btn');
+            if (undoBtn) undoBtn.disabled = undoIndex <= 0;
+            if (redoBtn) redoBtn.disabled = undoIndex >= undoStack.length - 1;
+        }
+
+        function saveToStorage() {
+            if (!mapData) return;
+            localStorage.setItem('clarity-editor-map', JSON.stringify(mapData));
+        }
+
+        function loadFromStorage() {
+            var saved = localStorage.getItem('clarity-editor-map');
+            if (saved) {
+                try {
+                    var data = JSON.parse(saved);
+                    loadMapData(data);
+                    return true;
+                } catch(e) {
+                    localStorage.removeItem('clarity-editor-map');
+                }
+            }
+            return false;
+        }
+
+        function getNextTileId() {
+            var ids = mapData.keys.map(function(k) { return k.id; });
+            return Math.max.apply(null, ids) + 1;
+        }
+
+        function showAddCustomDialog() {
+            document.getElementById('custom-edit-id').value = '';
+            document.getElementById('custom-modal-title').textContent = 'Add Custom Block';
+            document.getElementById('custom-modal-confirm').textContent = 'Add Tile';
+            document.getElementById('custom-id-display').textContent = getNextTileId();
+            document.getElementById('custom-name').value = '';
+            document.getElementById('custom-colour').value = '#FF0000';
+            document.getElementById('custom-solid').checked = false;
+            document.getElementById('custom-bounce').value = '0';
+            document.getElementById('custom-jump').checked = false;
+            document.getElementById('custom-fore').checked = false;
+            document.getElementById('custom-friction-x').value = '0';
+            document.getElementById('custom-friction-y').value = '0';
+            document.getElementById('custom-gravity-x').value = '0';
+            document.getElementById('custom-gravity-y').value = '0';
+            document.getElementById('custom-is-key').checked = false;
+            document.getElementById('custom-unlocks').value = '0';
+            document.getElementById('custom-is-door').checked = false;
+            document.getElementById('custom-lock-key').value = '0';
+            document.getElementById('custom-colour-change').checked = false;
+            document.getElementById('cc-random').checked = true;
+            document.getElementById('custom-cc-colour').value = '#FF9900';
+            document.getElementById('custom-modal-overlay').classList.add('open');
+        }
+
+        function showEditCustomDialog(id) {
+            var key = mapData.keys.find(function(k) { return k.id === id; });
+            if (!key) return;
+            document.getElementById('custom-edit-id').value = id;
+            document.getElementById('custom-modal-title').textContent = 'Edit Custom Block (ID ' + id + ')';
+            document.getElementById('custom-modal-confirm').textContent = 'Save Changes';
+            document.getElementById('custom-id-display').textContent = id;
+            document.getElementById('custom-name').value = key.name || '';
+            document.getElementById('custom-colour').value = key.colour || '#FF0000';
+            document.getElementById('custom-solid').checked = !!key.solid;
+            document.getElementById('custom-bounce').value = key.bounce || '0';
+            document.getElementById('custom-jump').checked = !!key.jump;
+            document.getElementById('custom-fore').checked = !!key.fore;
+            document.getElementById('custom-friction-x').value = (key.friction && key.friction.x) || '0';
+            document.getElementById('custom-friction-y').value = (key.friction && key.friction.y) || '0';
+            document.getElementById('custom-gravity-x').value = (key.gravity && key.gravity.x) || '0';
+            document.getElementById('custom-gravity-y').value = (key.gravity && key.gravity.y) || '0';
+            document.getElementById('custom-is-key').checked = !!key.isKey;
+            document.getElementById('custom-unlocks').value = key.unlocks || '0';
+            document.getElementById('custom-is-door').checked = !!key.isDoor;
+            document.getElementById('custom-lock-key').value = key.lockKey || '0';
+            var hasCC = key.script && key.script.indexOf('change_colour') === 0;
+            document.getElementById('custom-colour-change').checked = !!hasCC;
+            if (hasCC && key.ccColour) {
+                document.getElementById('cc-custom').checked = true;
+                document.getElementById('custom-cc-colour').value = key.ccColour;
+            } else {
+                document.getElementById('cc-random').checked = true;
+            }
+            document.getElementById('custom-modal-overlay').classList.add('open');
+        }
+
+        function hideCustomDialog() {
+            document.getElementById('custom-modal-overlay').classList.remove('open');
+        }
+
+        function updateKeyDoorScript(key, oldKey) {
+            if (oldKey && oldKey.script && oldKey.script.startsWith('unlock_')) {
+                delete mapData.scripts[oldKey.script];
+                delete oldKey.script;
+            }
+            if (key.isKey && key.unlocks && key.unlocks > 0) {
+                var sn = 'unlock_' + key.unlocks;
+                var doorId = key.unlocks;
+                mapData.scripts[sn] = 'var door=this.current_map.keys.find(function(k){return k.id===' + doorId + ';});if(door&&door.solid){door.solid=0;door.colour=\"#888\";}';
+                key.script = sn;
+            } else {
+                if (key.script && key.script.startsWith('unlock_')) {
+                    delete mapData.scripts[key.script];
+                    delete key.script;
+                }
+            }
+        }
+
+        function setColourChangeScript(key, oldKey) {
+            if (oldKey && oldKey.script && oldKey.script.indexOf('change_colour') === 0) {
+                delete mapData.scripts[oldKey.script];
+                delete oldKey.script;
+            }
+            var cc = document.getElementById('custom-colour-change').checked;
+            if (cc) {
+                var ccCustom = document.getElementById('cc-custom').checked;
+                var colour = ccCustom ? document.getElementById('custom-cc-colour').value : '';
+                var sn = 'change_colour_' + key.id;
+                if (ccCustom && colour) {
+                    mapData.scripts[sn] = 'this.player.colour = \"' + colour + '\";';
+                    key.ccColour = colour;
+                } else {
+                    mapData.scripts[sn] = 'this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);';
+                    delete key.ccColour;
+                }
+                key.script = sn;
+            } else {
+                if (key.script && key.script.indexOf('change_colour') === 0) {
+                    delete mapData.scripts[key.script];
+                    delete key.script;
+                }
+                delete key.ccColour;
+            }
+        }
+
+        function confirmCustomBlock() {
+            var editId = document.getElementById('custom-edit-id').value;
+            var name = document.getElementById('custom-name').value.trim();
+            var colour = document.getElementById('custom-colour').value;
+            var solid = document.getElementById('custom-solid').checked ? 1 : 0;
+            var bounce = parseFloat(document.getElementById('custom-bounce').value) || 0;
+            var jump = document.getElementById('custom-jump').checked ? 1 : 0;
+            var fore = document.getElementById('custom-fore').checked ? 1 : 0;
+            var fx = parseFloat(document.getElementById('custom-friction-x').value) || 0;
+            var fy = parseFloat(document.getElementById('custom-friction-y').value) || 0;
+            var gx = parseFloat(document.getElementById('custom-gravity-x').value) || 0;
+            var gy = parseFloat(document.getElementById('custom-gravity-y').value) || 0;
+            var isKey = document.getElementById('custom-is-key').checked;
+            var unlocks = parseInt(document.getElementById('custom-unlocks').value) || 0;
+            var isDoor = document.getElementById('custom-is-door').checked;
+            var lockKey = parseInt(document.getElementById('custom-lock-key').value) || 0;
+            if (!name) { alert('Please enter a name.'); return; }
+            function buildKey(id) {
+                var k = {
+                    id: id, colour: colour, name: name,
+                    solid: solid, bounce: bounce || undefined,
+                    jump: jump || undefined, fore: fore || undefined,
+                    friction: (fx || fy) ? {x: fx, y: fy} : undefined,
+                    gravity: (gx || gy) ? {x: gx, y: gy} : undefined,
+                    isKey: isKey || undefined,
+                    unlocks: (isKey && unlocks) ? unlocks : undefined,
+                    isDoor: isDoor || undefined,
+                    lockKey: (isDoor && lockKey) ? lockKey : undefined
+                };
+                Object.keys(k).forEach(function(p) { if (k[p] === undefined) delete k[p]; });
+                return k;
+            }
+            if (!mapData.scripts) mapData.scripts = {};
+            if (editId) {
+                var key = mapData.keys.find(function(k) { return k.id === parseInt(editId); });
+                if (!key) return;
+                var oldKey = {script: key.script};
+                var built = buildKey(key.id);
+                Object.keys(built).forEach(function(p) { key[p] = built[p]; });
+                updateKeyDoorScript(key, oldKey);
+                setColourChangeScript(key, oldKey);
+            } else {
+                var id = getNextTileId();
+                var newKey = buildKey(id);
+                mapData.keys.push(newKey);
+                updateKeyDoorScript(newKey, null);
+                setColourChangeScript(newKey, null);
+            }
+            hideCustomDialog();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            renderScripts();
+            pushHistory();
+        }
+
+        function deleteCustomBlock(id) {
+            if (!confirm('Delete "' + (mapData.keys.find(function(k){return k.id===id;})||{}).name || 'Tile ' + id + '" (ID ' + id + ')? This removes it from the palette and clears it from the map.')) return;
+            var key = mapData.keys.find(function(k) { return k.id === id; });
+            if (key && key.script) {
+                delete mapData.scripts[key.script];
+            }
+            mapData.keys = mapData.keys.filter(function(k) { return k.id !== id; });
+            for (var y = 0; y < mapData.data.length; y++) {
+                for (var x = 0; x < mapData.data[y].length; x++) {
+                    if (mapData.data[y][x] === id) mapData.data[y][x] = 0;
+                }
+            }
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            renderScripts();
+            pushHistory();
+        }
+
+        function loadMapData(data) {
+            mapData = data;
+            if (!skipHistory) {
+                undoStack = [];
+                undoIndex = -1;
+            }
+            selectedId = 0;
+            eraserOn = false;
+            document.getElementById('eraser-btn').classList.remove('active');
+            document.querySelector('[name="mapname"]').value = data.name || '';
+            document.getElementById('status').textContent = 'Loaded: ' + (data.name || 'unnamed')
+                + ' | ' + data.data[0].length + 'x' + data.data.length + ' | ' + data.keys.length + ' tiles';
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderProps();
+            renderGrid();
+            renderScripts();
+            renderPresets();
+            if (!skipHistory) pushHistory();
+        }
+
+        function loadFile() {
+            var file = document.getElementById('file-input').files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) { eval(e.target.result); };
+            reader.readAsText(file);
+        }
+
+        function toggleEraser() {
+            eraserOn = !eraserOn;
+            document.getElementById('eraser-btn').classList.toggle('active', eraserOn);
+        }
+
+        function toggleSidePanel() {
+            var panel = document.getElementById('side-panel');
+            var reopen = document.getElementById('side-reopen');
+            panel.classList.toggle('closed');
+            reopen.style.display = panel.classList.contains('closed') ? 'block' : 'none';
+        }
+
+        function showNewDialog() {
+            document.getElementById('modal-overlay').classList.add('open');
+        }
+        function hideNewDialog() {
+            document.getElementById('modal-overlay').classList.remove('open');
+        }
+        function createNewMap(cols, rows) {
+            hideNewDialog();
+            var keys = [
+                {id: 0, colour: '#333', solid: 0},
+                {id: 1, colour: '#888', solid: 0},
+                {id: 2, colour: '#555', solid: 1, bounce: 0.35},
+                {id: 3, colour: 'rgba(121, 220, 242, 0.4)', friction: {x: 0.9, y: 0.9}, gravity: {x: 0, y: 0.1}, jump: 1, fore: 1},
+                {id: 4, colour: '#777', jump: 1},
+                {id: 5, colour: '#E373FA', solid: 1, bounce: 1.1},
+                {id: 6, colour: '#666', solid: 1, bounce: 0},
+                {id: 7, colour: '#73C6FA', solid: 0, script: 'change_colour'},
+                {id: 8, colour: '#FADF73', solid: 0, script: 'next_level'},
+                {id: 9, colour: '#C93232', solid: 0, script: 'death'},
+                {id: 10, colour: '#555', solid: 1},
+                {id: 11, colour: '#0FF', solid: 0, script: 'unlock'}
+            ];
+            var data = [];
+            for (var y = 0; y < rows; y++) {
+                var row = [];
+                for (var x = 0; x < cols; x++) {
+                    if (y === 0 || y === rows - 1 || x === 0 || x === cols - 1) {
+                        row.push(2);
+                    } else {
+                        row.push(1);
+                    }
+                }
+                data.push(row);
+            }
+            loadMapData({
+                name: 'New Map',
+                tile_size: 16,
+                background: '#333',
+                keys: keys,
+                data: data,
+                gravity: {x: 0, y: 0.3},
+                vel_limit: {x: 2, y: 16},
+                movement_speed: {jump: 6, left: 0.3, right: 0.3},
+                player: {x: 2, y: 2, colour: '#FF9900'},
+                scripts: {
+                    change_colour: "this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);",
+                    next_level: "alert(\"You win!\");this.load_map(this.source_map);",
+                    death: "alert(\"You died!\");this.load_map(this.source_map);",
+                    unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";"
+                }
+            });
+        }
+
+        function toggleSection(header) {
+            var body = header.parentNode.querySelector('.section-body');
+            if (!body) return;
+            var arrow = header.querySelector('.arrow');
+            body.classList.toggle('closed');
+            arrow.textContent = body.classList.contains('closed') ? '▸' : '▾';
+        }
+
+        function selectTile(id) {
+            selectedId = id;
+            renderPaletteTiles();
+        }
+
+        function renderPaletteTiles() {
+            var div = document.getElementById('palette-tiles');
+            div.innerHTML = '';
+            mapData.keys.forEach(function(key, i) {
+                var el = document.createElement('div');
+                el.className = 'palette-tile' + (key.id === selectedId ? ' selected' : '');
+                el.style.background = key.colour;
+                el.textContent = key.id;
+                el.title = (key.name || defaultTileNames[i] || 'tile ' + i) + ' (ID ' + key.id + ')';
+                el.onclick = function() { selectTile(key.id); };
+                div.appendChild(el);
+            });
+        }
+
+        function renderPaletteEditor() {
+            var div = document.getElementById('palette-editor');
+            div.innerHTML = '';
+            mapData.keys.forEach(function(key, i) {
+                var row = document.createElement('div');
+                row.className = 'tile-editor';
+                var html =
+                    '<span class="tile-id">' + key.id + '</span>'
+                    + '<input type="color" value="' + key.colour.replace(/"/g, '&quot;') + '" onchange="updateTileColour(' + key.id + ', this.value)" title="Pick colour">'
+                    + '<label><input type="checkbox" ' + (key.solid ? 'checked' : '') + ' onchange="updateTileProp(' + key.id + ',\'solid\',this.checked?1:0)">S</label>'
+                    + '<label title="Bounce"><input type="number" step="0.05" value="' + (key.bounce || 0) + '" onchange="updateTileProp(' + key.id + ',\'bounce\',parseFloat(this.value)||0)" style="width:38px">B</label>'
+                    + '<label><input type="checkbox" ' + (key.jump ? 'checked' : '') + ' onchange="updateTileProp(' + key.id + ',\'jump\',this.checked?1:0)">J</label>'
+                    + '<span class="tile-name">' + (key.name || defaultTileNames[i] || '') + '</span>';
+                if (key.id > 11) {
+                    html += '<button onclick="showEditCustomDialog(' + key.id + ')" style="font-size:10px;padding:1px 4px;margin-left:4px;" title="Edit">✎</button>';
+                    html += '<button onclick="deleteCustomBlock(' + key.id + ')" style="font-size:10px;padding:1px 4px;" title="Delete">✕</button>';
+                }
+                row.innerHTML = html;
+                div.appendChild(row);
+            });
+        }
+
+        function updateTileColour(id, val) {
+            var key = mapData.keys.find(function(k) { return k.id === id; });
+            if (!key) return;
+            key.colour = val;
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            pushHistory();
+        }
+
+        function updateTileProp(id, prop, val) {
+            var key = mapData.keys.find(function(k) { return k.id === id; });
+            if (!key) return;
+            key[prop] = val;
+            renderPaletteEditor();
+            renderGrid();
+            pushHistory();
+        }
+
+        function renderProps() {
+            var div = document.getElementById('props-panel');
+            if (!mapData) { div.innerHTML = ''; return; }
+            var m = mapData, esc = function(s) { return (s || '#000').replace(/"/g, '&quot;'); };
+            div.innerHTML =
+                '<div class="prop-row">'
+                + '<label>Gravity: x<input type="number" step="0.05" value="' + (m.gravity && m.gravity.x || 0) + '" onchange="setMapProp(\'gravity\',\'x\',parseFloat(this.value)||0)"></label>'
+                + '<label>y<input type="number" step="0.05" value="' + (m.gravity && m.gravity.y || 0) + '" onchange="setMapProp(\'gravity\',\'y\',parseFloat(this.value)||0)"></label>'
+                + '</div>'
+                + '<div class="prop-row">'
+                + '<label>Vel Limit: x<input type="number" step="0.5" value="' + (m.vel_limit && m.vel_limit.x || 0) + '" onchange="setMapProp(\'vel_limit\',\'x\',parseFloat(this.value)||0)"></label>'
+                + '<label>y<input type="number" step="0.5" value="' + (m.vel_limit && m.vel_limit.y || 0) + '" onchange="setMapProp(\'vel_limit\',\'y\',parseFloat(this.value)||0)"></label>'
+                + '</div>'
+                + '<div class="prop-row">'
+                + '<label>Move: jump<input type="number" step="0.5" value="' + (m.movement_speed && m.movement_speed.jump || 0) + '" onchange="setMapProp(\'movement_speed\',\'jump\',parseFloat(this.value)||0)"></label>'
+                + '<label>left<input type="number" step="0.05" value="' + (m.movement_speed && m.movement_speed.left || 0) + '" onchange="setMapProp(\'movement_speed\',\'left\',parseFloat(this.value)||0)"></label>'
+                + '<label>right<input type="number" step="0.05" value="' + (m.movement_speed && m.movement_speed.right || 0) + '" onchange="setMapProp(\'movement_speed\',\'right\',parseFloat(this.value)||0)"></label>'
+                + '</div>'
+                + '<div class="prop-row">'
+                + '<label>Player: x<input type="number" value="' + (m.player && m.player.x || 0) + '" onchange="setMapProp(\'player\',\'x\',parseInt(this.value)||0)"></label>'
+                + '<label>y<input type="number" value="' + (m.player && m.player.y || 0) + '" onchange="setMapProp(\'player\',\'y\',parseInt(this.value)||0)"></label>'
+                + '<label>colour<input type="color" value="' + esc(m.player && m.player.colour) + '" onchange="setMapProp(\'player\',\'colour\',this.value)"></label>'
+                + '<input type="text" value="' + esc(m.player && m.player.colour) + '" onchange="setMapProp(\'player\',\'colour\',this.value)" style="width:56px;font-size:10px;padding:1px 3px">'
+                + '</div>';
+        }
+
+        function setMapProp(section, key, val) {
+            if (!mapData) return;
+            if (!mapData[section]) mapData[section] = {};
+            mapData[section][key] = val;
+            pushHistory();
+        }
+
+        var presetThemes = {
+            // bg(0), floor(1), brick-bounce(2), ice/jump(3), platform(4), super-bounce(5),
+            // wall-no-bounce(6), trigger(7), goal(8), death(9), brick-solid(10), unlock(11)
+
+            'Original':   ['#333', '#888', '#555', '#79DCF2', '#777', '#E373FA', '#666', '#73C6FA', '#FADF73', '#C93232', '#555', '#0FF'],
+
+            'Lava Caves': ['#1a0000', '#4a1a1a', '#8b3a3a', '#FF6400', '#cc5500', '#FF4500', '#660000', '#FF6347', '#FFD700', '#8B0000', '#5c1a1a', '#00FFFF'],
+
+            'Forest':     ['#1a2a1a', '#5a8f3c', '#6b4423', '#7acf8a', '#4a7c59', '#8fcf4a', '#3a2a1a', '#cf8f4a', '#f0d060', '#c04040', '#5c3a1e', '#60cfb0'],
+            'Ocean':      ['#0a1a2a', '#2a6f9c', '#4a7a8a', '#6acfdf', '#3a8ab8', '#7adfef', '#1a3a4a', '#df8f4a', '#f0d060', '#cf4040', '#2a5a7a', '#60dfcf'],
+            'Lava':       ['#2a0800', '#8b3a1a', '#aa4400', '#ff8800', '#cc5500', '#ffaa00', '#4a1100', '#ff4400', '#ffd700', '#ff0000', '#6a1a00', '#00ffff'],
+            'Cyber':      ['#0a0a1a', '#333366', '#5555aa', '#00ccff', '#4444aa', '#ff00ff', '#1a1a44', '#ffff00', '#ffcc00', '#ff0044', '#333388', '#00ff88'],
+            'Pastel':     ['#e8e0d0', '#b8d8b8', '#d4b890', '#a4d8f4', '#c8d8a8', '#f4a4d0', '#c8b8a8', '#f4d4a4', '#f0d070', '#e08080', '#c8a888', '#a0d8d0'],
+            'Midnight':   ['#0a0a14', '#1a1a2e', '#2a2a4e', '#4a4a8e', '#3a2a5e', '#8a4aae', '#1a1a3e', '#6a4a8e', '#e0b040', '#c03030', '#2a2a5e', '#4a8ace'],
+            'Sunset':     ['#1a0a0a', '#5c3a1a', '#8b5e2a', '#d4a040', '#b07030', '#ff8800', '#3a1a0a', '#cc6040', '#f0c040', '#cc2020', '#6a3a1a', '#40a0d0'],
+            'Arctic':     ['#c8d0d8', '#b0c8da', '#8898b0', '#c0e0f0', '#a0b8d0', '#e0f0ff', '#687890', '#80b8e0', '#f0d060', '#d04040', '#7890a8', '#80d0e0'],
+            'Toxic':      ['#0a0a00', '#1a3a0a', '#2a5a1a', '#6aaa3a', '#3a6a1a', '#8add4a', '#0a1a00', '#ddaa00', '#f0d060', '#cc2020', '#1a4a0a', '#00ddaa'],
+            'Candy':      ['#f0e0e0', '#f4a0b0', '#d08090', '#80e0a0', '#f0c0d0', '#ff88ff', '#c08090', '#ffe060', '#f0d040', '#e04040', '#d090a0', '#60e0e0'],
+            'Haunted':    ['#0a0a12', '#2a2030', '#3a3040', '#605070', '#4a3a50', '#aa80c0', '#1a1820', '#80cc40', '#e0c040', '#cc2020', '#2a2830', '#40cc80'],
+            'Desert':     ['#1a1410', '#c0a060', '#a08040', '#e0c080', '#b09050', '#f0d090', '#705030', '#e0a040', '#f0d060', '#c04020', '#806040', '#40a0d0'],
+        };
+
+        function applyPreset(name) {
+            var colors = presetThemes[name];
+            mapData.keys.forEach(function(key, i) {
+                if (i < colors.length) key.colour = colors[i];
+            });
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            pushHistory();
+        }
+
+        function renderPresets() {
+            var div = document.getElementById('presets-content');
+            div.innerHTML = '';
+            Object.keys(presetThemes).forEach(function(name) {
+                var btn = document.createElement('button');
+                btn.textContent = name;
+                btn.onclick = function() { applyPreset(name); };
+                div.appendChild(btn);
+            });
+        }
+
+        function renderScripts() {
+            var div = document.getElementById('scripts-editor');
+            if (!mapData || !mapData.scripts) { div.innerHTML = '<em>No scripts</em>'; return; }
+            div.innerHTML = '';
+            Object.keys(mapData.scripts).forEach(function(name) {
+                var row = document.createElement('div');
+                row.className = 'script-row';
+                var label = document.createElement('label');
+                label.textContent = name;
+                var ta = document.createElement('textarea');
+                ta.value = mapData.scripts[name];
+                ta.onchange = function() { mapData.scripts[name] = this.value; pushHistory(); };
+                row.appendChild(label);
+                row.appendChild(ta);
+                div.appendChild(row);
+            });
+        }
+
+        function renderGrid() {
+            var canvas = document.getElementById('grid');
+            var rows = mapData.data.length;
+            var cols = mapData.data[0].length;
+            canvas.width = cols * TILE;
+            canvas.height = rows * TILE;
+            var ctx = canvas.getContext('2d');
+            for (var y = 0; y < rows; y++) {
+                for (var x = 0; x < cols; x++) {
+                    var id = mapData.data[y][x];
+                    if (id !== undefined && id !== null) {
+                        var key = mapData.keys.find(function(k) { return k.id === id; });
+                        if (key && key.colour && id !== 0) {
+                            ctx.fillStyle = key.colour;
+                            ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+                        } else {
+                            var check = (x + y) % 2 === 0;
+                            ctx.fillStyle = check ? '#333' : '#2a2a2a';
+                            ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+                        }
+                    } else {
+                        var check = (x + y) % 2 === 0;
+                        ctx.fillStyle = check ? '#333' : '#2a2a2a';
+                        ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+                    }
+                    ctx.strokeStyle = '#444';
+                    ctx.lineWidth = 0.5;
+                    ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
+                }
+            }
+        }
+
+        function getGridPos(e) {
+            var canvas = document.getElementById('grid');
+            var rect = canvas.getBoundingClientRect();
+            return {
+                x: Math.floor((e.clientX - rect.left) / TILE),
+                y: Math.floor((e.clientY - rect.top) / TILE)
+            };
+        }
+
+        function paintAt(pos) {
+            if (!mapData) return;
+            if (pos.y < 0 || pos.y >= mapData.data.length) return;
+            var row = mapData.data[pos.y];
+            if (pos.x < 0 || pos.x >= row.length) return;
+            var id = eraserOn ? 0 : selectedId;
+            mapData.data[pos.y][pos.x] = id;
+            var ctx = document.getElementById('grid').getContext('2d');
+            var x = pos.x,
+                y = pos.y;
+            if (id !== 0) {
+                var key = mapData.keys.find(function(k) { return k.id === id; });
+                if (key && key.colour) {
+                    ctx.fillStyle = key.colour;
+                    ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+                } else {
+                    var check = (x + y) % 2 === 0;
+                    ctx.fillStyle = check ? '#333' : '#2a2a2a';
+                    ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+                }
+            } else {
+                var check = (x + y) % 2 === 0;
+                ctx.fillStyle = check ? '#333' : '#2a2a2a';
+                ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+            }
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
+        }
+
+        document.getElementById('grid').addEventListener('mousedown', function(e) {
+            if (e.button === 2) { eraserOn = true; document.getElementById('eraser-btn').classList.add('active'); }
+            painting = true;
+            painted = false;
+            paintAt(getGridPos(e));
+            painted = true;
+        });
+        document.getElementById('grid').addEventListener('mousemove', function(e) {
+            if (painting) { paintAt(getGridPos(e)); painted = true; }
+        });
+        document.getElementById('grid').addEventListener('mouseup', function() {
+            painting = false;
+            if (painted) pushHistory();
+            painted = false;
+        });
+        document.getElementById('grid').addEventListener('mouseleave', function() {
+            painting = false;
+            if (painted) pushHistory();
+            painted = false;
+        });
+        document.getElementById('grid').addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+        function addRow() {
+            if (!mapData) return;
+            var cols = mapData.data[0].length;
+            mapData.data.push(new Array(cols).fill(0));
+            renderGrid();
+            document.getElementById('status').textContent = 'Row added, size: ' + mapData.data[0].length + 'x' + mapData.data.length;
+            pushHistory();
+        }
+
+        function delRow() {
+            if (!mapData || mapData.data.length <= 1) return;
+            mapData.data.pop();
+            renderGrid();
+            document.getElementById('status').textContent = 'Row removed, size: ' + mapData.data[0].length + 'x' + mapData.data.length;
+            pushHistory();
+        }
+
+        function addCol() {
+            if (!mapData) return;
+            mapData.data.forEach(function(row) { row.push(0); });
+            renderGrid();
+            document.getElementById('status').textContent = 'Col added, size: ' + mapData.data[0].length + 'x' + mapData.data.length;
+            pushHistory();
+        }
+
+        function delCol() {
+            if (!mapData || mapData.data[0].length <= 1) return;
+            mapData.data.forEach(function(row) { row.pop(); });
+            renderGrid();
+            document.getElementById('status').textContent = 'Col removed, size: ' + mapData.data[0].length + 'x' + mapData.data.length;
+            pushHistory();
+        }
+
+        function setZoom(val) {
+            TILE = val;
+            document.getElementById('zoom-label').textContent = val;
+            renderGrid();
+        }
+
+        function serialize(o, indent) {
+            indent = indent || 0;
+            var pad = '  '.repeat(indent);
+            var pad2 = '  '.repeat(indent + 1);
+            if (o === null) return 'null';
+            var t = typeof o;
+            if (t === 'number' || t === 'boolean') return '' + o;
+            if (t === 'string') return JSON.stringify(o);
+            if (Array.isArray(o)) {
+                if (o.length === 0) return '[]';
+                var allSimple = o.every(function(v) { return v === null || typeof v !== 'object'; });
+                var allArrays = o.every(function(v) { return Array.isArray(v); });
+                var allObjects = o.every(function(v) { return typeof v === 'object' && !Array.isArray(v) && v !== null; });
+                if (allSimple) return '[' + o.map(function(v) { return serialize(v); }).join(', ') + ']';
+                if (allArrays) {
+                    var rows = o.map(function(row) {
+                        return pad2 + '[' + row.map(function(v) { return serialize(v); }).join(', ') + ']';
+                    }).join(',\n');
+                    return '[\n' + rows + '\n' + pad + ']';
+                }
+                if (allObjects) {
+                    var items = o.map(function(obj) {
+                        var inner = Object.keys(obj).map(function(k) {
+                            return k + ': ' + serialize(obj[k]);
+                        }).join(', ');
+                        return pad2 + '{' + inner + '}';
+                    }).join(',\n');
+                    return '[\n' + items + '\n' + pad + ']';
+                }
+                var mixed = o.map(function(v) { return pad2 + serialize(v, indent + 1); }).join(',\n');
+                return '[\n' + mixed + '\n' + pad + ']';
+            }
+            if (t === 'object') {
+                var keys = Object.keys(o);
+                if (keys.length === 0) return '{}';
+                var items = keys.map(function(k) {
+                    return pad2 + k + ': ' + serialize(o[k], indent + 1);
+                }).join(',\n');
+                return '{\n' + items + '\n' + pad + '}';
+            }
+            return '' + o;
+        }
+
+        function saveMap() {
+            if (!mapData) return;
+            if (document.querySelector('[name="mapname"]').value) {
+                mapData.name = document.querySelector('[name="mapname"]').value;
+            }
+            var content = 'loadMapData(' + serialize(mapData) + ');\n';
+            var blob = new Blob([content], { type: 'application/javascript' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = (mapData.name || 'map').replace(/[^a-zA-Z0-9_-]/g, '_') + '.js';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            document.getElementById('status').textContent = 'Saved as ' + a.download;
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z' && !e.shiftKey) {
+                    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+                    e.preventDefault();
+                    undo();
+                } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+                    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+                    e.preventDefault();
+                    redo();
+                }
+            }
+        });
+
+        loadFromStorage();
+    </script>
+</body>
+
+</html>
