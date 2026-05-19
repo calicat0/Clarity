@@ -53,6 +53,7 @@
     <canvas id="canvas"></canvas>
 
     <p>Use the left, right and up arrow keys to move.</p>
+    <div id="level-info" style="text-align:center;font-size:12px;color:#888;margin:4px 0;"></div>
 
     <div id="controls">
         <label for="map-select">Map:</label>
@@ -93,13 +94,34 @@
 
         var _origLoadMap = game.load_map.bind(game);
         game.load_map = function (map) {
-            return _origLoadMap(JSON.parse(JSON.stringify(map)));
+            var ret = _origLoadMap(JSON.parse(JSON.stringify(map)));
+            updateLevelInfo();
+            return ret;
         };
 
         function loadMapData(data) {
+            game.modularData = null;
             game.source_map = JSON.parse(JSON.stringify(data));
             game.load_map(data);
             game.limit_viewport = true;
+        }
+
+        function loadModularData(data) {
+            game.modularData = JSON.parse(JSON.stringify(data));
+            game.modularIndex = 0;
+            game.loadModularMap(0);
+        }
+
+        function updateLevelInfo() {
+            var info = document.getElementById('level-info');
+            if (!info) return;
+            if (game.modularData && game.current_map) {
+                info.textContent = game.modularData.name + ' — ' + (game.current_map.name || 'Level ' + (game.modularIndex + 1)) + ' (' + (game.modularIndex + 1) + '/' + game.modularData.maps.length + ')';
+            } else if (game.current_map) {
+                info.textContent = game.current_map.name || '';
+            } else {
+                info.textContent = '';
+            }
         }
 
         function loadMap(url) {

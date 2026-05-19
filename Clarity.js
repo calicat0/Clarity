@@ -176,6 +176,26 @@ Clarity.prototype.load_map = function (map) {
     return true;
 };
 
+Clarity.prototype.loadModularMap = function (index) {
+    if (!this.modularData) {
+        this.load_map(this.source_map);
+        return;
+    }
+    if (index >= this.modularData.maps.length) {
+        alert("You completed all levels!");
+        return;
+    }
+    if (index < 0) index = 0;
+    this.modularIndex = index;
+    var mapData = JSON.parse(JSON.stringify(this.modularData.maps[index]));
+    if (!mapData.scripts) mapData.scripts = {};
+    mapData.scripts.next_level = 'if(this.modularData){if(this.modularIndex+1<this.modularData.maps.length){this.loadModularMap(this.modularIndex+1);}else{alert("All levels complete!");}}else{alert("You win!");this.load_map(this.source_map);}';
+    mapData.scripts.death = 'if(this.modularData){this.loadModularMap(this.modularIndex);}else{alert("You died!");this.load_map(this.source_map);}';
+    this.source_map = mapData;
+    this.load_map(mapData);
+    this.limit_viewport = true;
+};
+
 Clarity.prototype.get_tile = function (x, y) {
 
     return (this.current_map.data[y] && this.current_map.data[y][x]) ? this.current_map.data[y][x] : 0;

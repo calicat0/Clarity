@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 
@@ -425,6 +424,17 @@
         <label>Name:</label>
         <input type="text" name="mapname" onchange="mapData.name=this.value;pushHistory()" placeholder="Level name">
         <span class="sep"></span>
+        <span id="modular-controls" style="display:none">
+            <span style="color:#888;font-size:11px;">Maps:</span>
+            <span id="map-tabs"></span>
+            <button onclick="showAddMapDialog()" title="Add a new map to this world">+Map</button>
+            <button onclick="removeMap()" title="Remove current map from this world">-Map</button>
+            <button onclick="moveMap(-1)" title="Move current map left">◀</button>
+            <button onclick="moveMap(1)" title="Move current map right">▶</button>
+            <span style="margin-left:8px;color:#888;font-size:11px;">World:</span>
+            <input type="text" id="world-name" style="width:120px" placeholder="World name" onchange="if(modularWorld)modularWorld.name=this.value">
+        </span>
+        <span class="sep"></span>
         <button id="eraser-btn" onclick="toggleEraser()">Eraser</button>
         <span class="sep"></span>
         <button onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
@@ -553,6 +563,9 @@
 
     <script>
         var mapData = null;
+        var modularWorld = null;
+        var currentMapIndex = 0;
+        var _addMapMode = false;
         var selectedId = 0;
         var eraserOn = false;
         var TILE = 28;
@@ -603,10 +616,25 @@
 
         function saveToStorage() {
             if (!mapData) return;
-            localStorage.setItem('clarity-editor-map', JSON.stringify(mapData));
+            if (modularWorld) {
+                modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+                localStorage.setItem('clarity-editor-modular', JSON.stringify(modularWorld));
+            } else {
+                localStorage.setItem('clarity-editor-map', JSON.stringify(mapData));
+            }
         }
 
         function loadFromStorage() {
+            var savedMod = localStorage.getItem('clarity-editor-modular');
+            if (savedMod) {
+                try {
+                    var modData = JSON.parse(savedMod);
+                    loadModularData(modData);
+                    return true;
+                } catch(e) {
+                    localStorage.removeItem('clarity-editor-modular');
+                }
+            }
             var saved = localStorage.getItem('clarity-editor-map');
             if (saved) {
                 try {
@@ -819,6 +847,13 @@
         }
 
         function loadMapData(data) {
+            if (!modularWorld) {
+                modularWorld = {
+                    name: data.name || 'World',
+                    maps: [JSON.parse(JSON.stringify(data))]
+                };
+                currentMapIndex = 0;
+            }
             mapData = data;
             if (!skipHistory) {
                 undoStack = [];
@@ -836,14 +871,148 @@
             renderGrid();
             renderScripts();
             renderPresets();
+            renderModularTabs();
             if (!skipHistory) pushHistory();
+        }
+
+        function loadModularData(data) {
+            modularWorld = JSON.parse(JSON.stringify(data));
+            if (!modularWorld.maps || modularWorld.maps.length === 0) {
+                modularWorld = null;
+                return;
+            }
+            currentMapIndex = 0;
+            var wn = document.getElementById('world-name');
+            if (wn) wn.value = modularWorld.name || '';
+            loadMapData(modularWorld.maps[0]);
+            renderModularTabs();
+        }
+
+        function renderModularTabs() {
+            var controls = document.getElementById('modular-controls');
+            var tabs = document.getElementById('map-tabs');
+            if (!controls || !tabs) return;
+            if (!modularWorld || !modularWorld.maps || modularWorld.maps.length === 0) {
+                controls.style.display = 'none';
+                return;
+            }
+            controls.style.display = 'inline';
+            tabs.innerHTML = '';
+            modularWorld.maps.forEach(function (m, i) {
+                var btn = document.createElement('button');
+                btn.textContent = m.name || 'Level ' + (i + 1);
+                btn.style.fontSize = '11px';
+                btn.style.padding = '2px 8px';
+                btn.style.margin = '0 2px';
+                if (i === currentMapIndex) {
+                    btn.style.background = '#0ff';
+                    btn.style.color = '#000';
+                    btn.style.borderColor = '#0ff';
+                }
+                btn.onclick = function () { switchMap(i); };
+                btn.oncontextmenu = function (e) {
+                    e.preventDefault();
+                    var name = prompt('Rename "' + (m.name || 'Level ' + (i + 1)) + '":', m.name || 'Level ' + (i + 1));
+                    if (name && name.trim()) {
+                        modularWorld.maps[i].name = name.trim();
+                        if (i === currentMapIndex) {
+                            mapData.name = name.trim();
+                            document.querySelector('[name="mapname"]').value = name.trim();
+                        }
+                        renderModularTabs();
+                    }
+                };
+                tabs.appendChild(btn);
+            });
+            var wn = document.getElementById('world-name');
+            if (wn) wn.value = modularWorld.name || '';
+        }
+
+        function switchMap(index) {
+            if (!modularWorld || index === currentMapIndex) return;
+            if (index < 0 || index >= modularWorld.maps.length) return;
+            modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+            currentMapIndex = index;
+            loadMapData(modularWorld.maps[index]);
+            renderModularTabs();
+        }
+
+        function addMap() {
+            if (!modularWorld) return;
+            var keys = [
+                {id: 0, colour: '#333', solid: 0},
+                {id: 1, colour: '#888', solid: 0},
+                {id: 2, colour: '#555', solid: 1, bounce: 0.35},
+                {id: 3, colour: 'rgba(121, 220, 242, 0.4)', friction: {x: 0.9, y: 0.9}, gravity: {x: 0, y: 0.1}, jump: 1, fore: 1},
+                {id: 4, colour: '#777', jump: 1},
+                {id: 5, colour: '#E373FA', solid: 1, bounce: 1.1},
+                {id: 6, colour: '#666', solid: 1, bounce: 0},
+                {id: 7, colour: '#73C6FA', solid: 0, script: 'change_colour'},
+                {id: 8, colour: '#FADF73', solid: 0, script: 'next_level'},
+                {id: 9, colour: '#C93232', solid: 0, script: 'death'},
+                {id: 10, colour: '#555', solid: 1},
+                {id: 11, colour: '#0FF', solid: 0, script: 'unlock'}
+            ];
+            var cols = 20, rows = 15;
+            var data = [];
+            for (var y = 0; y < rows; y++) {
+                var row = [];
+                for (var x = 0; x < cols; x++) {
+                    row.push((y === 0 || y === rows - 1 || x === 0 || x === cols - 1) ? 2 : 1);
+                }
+                data.push(row);
+            }
+            var newMap = {
+                name: 'Level ' + (modularWorld.maps.length + 1),
+                tile_size: 16,
+                background: '#333',
+                keys: keys,
+                data: data,
+                gravity: {x: 0, y: 0.3},
+                vel_limit: {x: 2, y: 16},
+                movement_speed: {jump: 6, left: 0.3, right: 0.3},
+                player: {x: 2, y: 2, colour: '#FF9900'},
+                scripts: {
+                    change_colour: "this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);",
+                    next_level: "alert(\"You win!\");this.load_map(this.source_map);",
+                    death: "alert(\"You died!\");this.load_map(this.source_map);",
+                    unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";"
+                }
+            };
+            modularWorld.maps.push(newMap);
+            switchMap(modularWorld.maps.length - 1);
+        }
+
+        function removeMap() {
+            if (!modularWorld || modularWorld.maps.length < 2) return;
+            if (!confirm('Remove "' + (mapData.name || 'Level ' + (currentMapIndex + 1)) + '" from this world?')) return;
+            modularWorld.maps.splice(currentMapIndex, 1);
+            if (currentMapIndex >= modularWorld.maps.length) currentMapIndex = modularWorld.maps.length - 1;
+            loadMapData(modularWorld.maps[currentMapIndex]);
+            renderModularTabs();
+        }
+
+        function moveMap(dir) {
+            if (!modularWorld || modularWorld.maps.length < 2) return;
+            var to = currentMapIndex + dir;
+            if (to < 0 || to >= modularWorld.maps.length) return;
+            modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+            var temp = modularWorld.maps[currentMapIndex];
+            modularWorld.maps[currentMapIndex] = modularWorld.maps[to];
+            modularWorld.maps[to] = temp;
+            currentMapIndex = to;
+            loadMapData(modularWorld.maps[currentMapIndex]);
+            renderModularTabs();
         }
 
         function loadFile() {
             var file = document.getElementById('file-input').files[0];
             if (!file) return;
             var reader = new FileReader();
-            reader.onload = function(e) { eval(e.target.result); };
+            reader.onload = function(e) {
+                modularWorld = null;
+                try { eval(e.target.result); } catch (err) { console.error(err); }
+            };
             reader.readAsText(file);
         }
 
@@ -860,13 +1029,25 @@
         }
 
         function showNewDialog() {
+            _addMapMode = false;
+            document.getElementById('modal-box').querySelector('h2').textContent = 'New Map';
+            document.getElementById('modal-close').textContent = 'Cancel';
+            document.getElementById('modal-overlay').classList.add('open');
+        }
+        function showAddMapDialog() {
+            _addMapMode = true;
+            document.getElementById('modal-box').querySelector('h2').textContent = 'Add Map to World';
+            document.getElementById('modal-close').textContent = 'Cancel';
             document.getElementById('modal-overlay').classList.add('open');
         }
         function hideNewDialog() {
+            _addMapMode = false;
             document.getElementById('modal-overlay').classList.remove('open');
         }
         function createNewMap(cols, rows) {
+            var adding = _addMapMode;
             hideNewDialog();
+            if (!adding) modularWorld = null;
             var keys = [
                 {id: 0, colour: '#333', solid: 0},
                 {id: 1, colour: '#888', solid: 0},
@@ -893,8 +1074,8 @@
                 }
                 data.push(row);
             }
-            loadMapData({
-                name: 'New Map',
+            var newMap = {
+                name: adding ? 'Level ' + (modularWorld.maps.length + 1) : 'New Map',
                 tile_size: 16,
                 background: '#333',
                 keys: keys,
@@ -909,7 +1090,13 @@
                     death: "alert(\"You died!\");this.load_map(this.source_map);",
                     unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";"
                 }
-            });
+            };
+            if (adding) {
+                modularWorld.maps.push(newMap);
+                switchMap(modularWorld.maps.length - 1);
+            } else {
+                loadMapData(newMap);
+            }
         }
 
         function toggleSection(header) {
@@ -1255,17 +1442,20 @@
             if (document.querySelector('[name="mapname"]').value) {
                 mapData.name = document.querySelector('[name="mapname"]').value;
             }
-            var content = 'loadMapData(' + serialize(mapData) + ');\n';
+            modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+            var name = document.getElementById('world-name').value.trim() || modularWorld.name || mapData.name || 'world';
+            modularWorld.name = name;
+            var content = 'loadModularData(' + serialize(modularWorld) + ');\n';
             var blob = new Blob([content], { type: 'application/javascript' });
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url;
-            a.download = (mapData.name || 'map').replace(/[^a-zA-Z0-9_-]/g, '_') + '.js';
+            a.download = name.replace(/[^a-zA-Z0-9_-]/g, '_') + '.mod.js';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            document.getElementById('status').textContent = 'Saved as ' + a.download;
+            document.getElementById('status').textContent = 'Saved world as ' + a.download;
         }
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey || e.metaKey) {
@@ -1286,4 +1476,3 @@
 </body>
 
 </html>
-    
