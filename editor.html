@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 
@@ -539,6 +540,9 @@
                     <label><input type="radio" name="cc-mode" id="cc-random" checked> Random</label>
                     <label><input type="radio" name="cc-mode" id="cc-custom"> Custom: <input type="color" id="custom-cc-colour" value="#FF9900"></label>
                 </div>
+                <div class="prop-row">
+                    <label><input type="checkbox" id="custom-is-death"> Is Death (kill player, auto non-solid)</label>
+                </div>
             </div>
             <div style="margin-top:10px;display:flex;gap:6px;">
                 <button onclick="confirmCustomBlock()" id="custom-modal-confirm">Add Tile</button>
@@ -643,6 +647,7 @@
             document.getElementById('custom-colour-change').checked = false;
             document.getElementById('cc-random').checked = true;
             document.getElementById('custom-cc-colour').value = '#FF9900';
+            document.getElementById('custom-is-death').checked = false;
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -675,6 +680,7 @@
             } else {
                 document.getElementById('cc-random').checked = true;
             }
+            document.getElementById('custom-is-death').checked = key.script === 'death';
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -760,8 +766,9 @@
                 return k;
             }
             if (!mapData.scripts) mapData.scripts = {};
+            var key;
             if (editId) {
-                var key = mapData.keys.find(function(k) { return k.id === parseInt(editId); });
+                key = mapData.keys.find(function(k) { return k.id === parseInt(editId); });
                 if (!key) return;
                 var oldKey = {script: key.script};
                 var built = buildKey(key.id);
@@ -770,10 +777,19 @@
                 setColourChangeScript(key, oldKey);
             } else {
                 var id = getNextTileId();
-                var newKey = buildKey(id);
-                mapData.keys.push(newKey);
-                updateKeyDoorScript(newKey, null);
-                setColourChangeScript(newKey, null);
+                key = buildKey(id);
+                mapData.keys.push(key);
+                updateKeyDoorScript(key, null);
+                setColourChangeScript(key, null);
+            }
+            if (document.getElementById('custom-is-death').checked) {
+                key.script = 'death';
+                key.solid = 0;
+                if (!mapData.scripts.death) {
+                    mapData.scripts.death = 'alert(\"You died!\");this.load_map(this.source_map);';
+                }
+            } else {
+                if (key.script === 'death') delete key.script;
             }
             hideCustomDialog();
             renderPaletteTiles();
@@ -1270,3 +1286,4 @@
 </body>
 
 </html>
+    
