@@ -34,9 +34,9 @@
             background: #333;
         }
         button.active {
-            background: #0ff;
-            color: #000;
-            border-color: #0ff;
+            background: #444;
+            color: #fff;
+            border-color: #888;
         }
         label {
             margin-right: 6px;
@@ -86,8 +86,8 @@
             border-radius: 2px;
         }
         .palette-tile.selected {
-            border-color: #0ff;
-            box-shadow: 0 0 5px #0ff;
+            border-color: #888;
+            box-shadow: 0 0 5px rgba(255,255,255,0.15);
         }
         .palette-tile:hover {
             border-color: #888;
@@ -115,6 +115,30 @@
         .tile-editor input[type="checkbox"] {
             margin: 0;
             vertical-align: middle;
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border: 1px solid #555;
+            background: #111;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .tile-editor input[type="checkbox"]:checked {
+            background: #555;
+            border-color: #888;
+        }
+        .tile-editor input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            line-height: 1;
+            color: #ddd;
         }
         .tile-editor input[type="color"] {
             width: 28px;
@@ -905,9 +929,9 @@
                 btn.style.padding = '2px 8px';
                 btn.style.margin = '0 2px';
                 if (i === currentMapIndex) {
-                    btn.style.background = '#0ff';
-                    btn.style.color = '#000';
-                    btn.style.borderColor = '#0ff';
+                    btn.style.background = '#444';
+                    btn.style.color = '#fff';
+                    btn.style.borderColor = '#888';
                 }
                 btn.onclick = function () { switchMap(i); };
                 btn.oncontextmenu = function (e) {

@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Clarity</title>
     <style>
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
         body {
             font-family: monospace;
             background: #1a1a1a;
             color: #ddd;
-            margin: 0;
-            padding: 12px;
             font-size: 13px;
+            display: flex;
+            flex-direction: column;
         }
         button, input, select {
             font-family: monospace;
@@ -20,55 +23,515 @@
             color: #ddd;
             border: 1px solid #555;
             padding: 3px 6px;
+            cursor: pointer;
         }
         button:hover { background: #333; }
-        label { margin-right: 6px; font-size: 12px; color: #ddd; }
-        canvas {
-            display: block;
-            margin: 20px auto;
-            border: 1px solid #333;
-            box-shadow: 0 0 16px 2px rgba(0,0,0,0.8);
+        button.active { background: #444; color: #fff; border-color: #888; }
+        label { margin-right: 6px; font-size: 12px; color: #ddd; white-space: nowrap; }
+        input[type="checkbox"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            margin: 0;
+            border: 1px solid #555;
+            background: #111;
+            cursor: pointer;
+            vertical-align: middle;
+            position: relative;
+            flex-shrink: 0;
         }
-        #controls, .info {
+        input[type="checkbox"]:checked {
+            background: #555;
+            border-color: #888;
+        }
+        input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            line-height: 1;
+            color: #ddd;
+        }
+
+        #topbar {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
             align-items: center;
-            justify-content: center;
-            margin: 10px 0;
+            padding: 8px 12px;
+            border-bottom: 1px solid #444;
+            flex-shrink: 0;
+            background: #1a1a1a;
+            z-index: 10;
         }
-        p {
-            text-align: center;
+        #topbar .sep {
+            width: 1px;
+            height: 24px;
+            background: #555;
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+        #topbar .left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            flex: 1;
+            min-width: 0;
+        }
+        #topbar .right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        #topbar select { min-width: 120px; cursor: pointer; }
+        #topbar input[type="text"] { width: 100px; }
+        #topbar input[type="range"] {
+            width: 80px;
+            vertical-align: middle;
+            background: #111;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            border: none;
+            outline: none;
+        }
+        #topbar input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #888;
+            cursor: pointer;
+            border: none;
+        }
+        #topbar input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #888;
+            cursor: pointer;
+            border: none;
+        }
+        #topbar input[type="file"] {
+            max-width: 120px;
+            cursor: pointer;
+        }
+        #zoom-label {
+            font-size: 11px;
             color: #888;
-            font-size: 12px;
-            margin: 8px 0;
+            min-width: 36px;
+            text-align: right;
         }
-        input[type="checkbox"] { vertical-align: middle; }
-    </style>
+        #zen-btn {
+            font-size: 11px;
+            padding: 3px 10px;
+        }
 
+        #main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #game-area {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        #game-area.zen {
+            background: #000;
+        }
+        #canvas-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            flex-shrink: 0;
+        }
+        #canvas {
+            display: block;
+            border: 1px solid #333;
+            box-shadow: 0 0 16px 2px rgba(0,0,0,0.8);
+            transform-origin: center center;
+            transition: transform 0.15s ease;
+            image-rendering: auto;
+        }
+        #game-area.zen #canvas {
+            border-color: transparent;
+            box-shadow: 0 0 32px 8px rgba(255,255,255,0.04);
+        }
+
+        #game-controls-hint {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #555;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+        #game-area.zen #game-controls-hint {
+            opacity: 0;
+        }
+
+        #side-panel {
+            width: 240px;
+            flex-shrink: 0;
+            border-left: 1px solid #444;
+            background: #222;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: width 0.25s, padding 0.25s, border-color 0.25s, opacity 0.25s;
+        }
+        #side-panel.closed {
+            width: 0;
+            padding: 0;
+            border-color: transparent;
+            overflow: hidden;
+            opacity: 0;
+        }
+        .side-section {
+            margin-bottom: 2px;
+        }
+        .side-section .section-header {
+            font-weight: bold;
+            font-size: 11px;
+            color: #aaa;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 4px;
+            user-select: none;
+        }
+        .side-section .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            font-size: 11px;
+        }
+        .side-section .info-row .label {
+            color: #888;
+        }
+        .side-section .info-row .value {
+            color: #ddd;
+        }
+        .side-section .info-row .value.highlight {
+            color: #bbb;
+        }
+        .side-section[data-dev].hidden {
+            display: none;
+        }
+        #loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #888;
+        }
+        #loading-overlay.visible {
+            display: flex;
+        }
+
+        #level-info {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            padding: 4px 0;
+        }
+
+        /* ---- Menu Overlay ---- */
+        #menu-overlay {
+            display: flex;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+        #menu-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #menu-modal {
+            display: flex;
+            width: 640px;
+            height: 420px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            box-shadow: 0 8px 48px rgba(0,0,0,0.6);
+            overflow: hidden;
+            position: relative;
+        }
+        #menu-sidebar {
+            width: 130px;
+            flex-shrink: 0;
+            background: #111;
+            border-right: 1px solid #333;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .menu-nav-item {
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            user-select: none;
+            border-left: 2px solid transparent;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+        }
+        .menu-nav-item:hover {
+            color: #bbb;
+            background: #1a1a1a;
+        }
+        .menu-nav-item.active {
+            color: #ddd;
+            border-left-color: #888;
+            background: #1a1a1a;
+        }
+        #menu-content {
+            flex: 1;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu-page {
+            display: none;
+            width: 100%;
+            text-align: center;
+        }
+        .menu-page.active {
+            display: block;
+        }
+        .menu-page h1 {
+            font-size: 38px;
+            margin: 0 0 6px 0;
+            color: #fff;
+            font-weight: normal;
+            letter-spacing: 3px;
+        }
+        .menu-page .subtitle {
+            font-size: 11px;
+            color: #555;
+            margin: 0 0 6px 0;
+            letter-spacing: 1px;
+        }
+        .menu-page .divider {
+            width: 40px;
+            height: 1px;
+            background: #555;
+            margin: 12px auto 20px;
+        }
+        .menu-page .btn-start {
+            display: inline-block;
+            padding: 10px 36px;
+            font-size: 13px;
+            background: #555;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-family: monospace;
+            letter-spacing: 1px;
+            transition: background 0.15s;
+        }
+        .menu-page .btn-start:hover {
+            background: #777;
+        }
+        .menu-page .about-text {
+            font-size: 12px;
+            color: #999;
+            line-height: 1.7;
+            text-align: left;
+            max-width: 380px;
+        }
+        .menu-page .about-text a {
+            color: #aaa;
+            text-decoration: none;
+        }
+        .menu-page .placeholder-text {
+            font-size: 13px;
+            color: #555;
+        }
+        #menu-close {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: #555;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 6px;
+            z-index: 10;
+            font-family: monospace;
+        }
+        #menu-close:hover {
+            color: #ddd;
+        }
+    </style>
     <script type="text/javascript" src="Clarity.js"></script>
 </head>
-
 <body>
-    <canvas id="canvas"></canvas>
 
-    <p>Use the left, right and up arrow keys to move.</p>
-    <div id="level-info" style="text-align:center;font-size:12px;color:#888;margin:4px 0;"></div>
+    <div id="topbar">
+        <div class="left">
+            <label for="map-select" style="margin-right:2px;">Map:</label>
+            <select id="map-select"></select>
+            <button onclick="loadSelected()">Load</button>
+            <span class="sep"></span>
+            <input type="file" id="file-input" accept=".js">
+            <button onclick="loadFile()">Load File</button>
+            <span class="sep"></span>
+            <input type="text" id="url-input" placeholder="URL..." style="width:90px;">
+            <button onclick="loadURL()">Fetch</button>
+            <span class="sep"></span>
+            <label style="font-size:11px;">
+                <input type="checkbox" id="viewport" onchange="onLockChange(this.checked)"/> Lock
+            </label>
+        </div>
+        <div class="right">
+            <button onclick="showMenu()" title="Main menu" style="font-size:11px;">☰ Menu</button>
+            <span class="sep"></span>
+            <button id="zen-btn" onclick="toggleZen()" title="Toggle zen mode">◉ Zen</button>
+            <span class="sep"></span>
+            <label for="zoom-slider" style="font-size:11px;">Zoom</label>
+            <input type="range" id="zoom-slider" min="25" max="300" value="100">
+            <span id="zoom-label">100%</span>
+        </div>
+    </div>
 
-    <div id="controls">
-        <label for="map-select">Map:</label>
-        <select id="map-select"></select>
-        <button onclick="loadSelected()">Load</button>
+    <div id="main">
+        <div id="game-area">
+            <div id="canvas-wrap">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div id="game-controls-hint">Arrow keys to move</div>
+        </div>
+        <div id="side-panel">
+            <div class="side-section">
+                <div class="section-header">Information</div>
+                <p style="font-size:11px;color:#666;line-height:1.5;padding:4px 0;">
+                    Select a map from the top bar or load a <strong>.js</strong> file.
+                    Open the <strong>☰ Menu</strong> for settings and info.
+                    Use arrow keys to move.
+                </p>
+            </div>
+            <div class="side-section">
+                <div class="section-header">Map</div>
+                <div class="info-row"><span class="label">Name</span><span class="value" id="info-name">—</span></div>
+                <div class="info-row"><span class="label">Size</span><span class="value" id="info-size">—</span></div>
+                <div class="info-row"><span class="label">Tiles</span><span class="value" id="info-tiles">—</span></div>
+            </div>
+            <div class="side-section" data-dev="player">
+                <div class="section-header">Player</div>
+                <div class="info-row"><span class="label">Position</span><span class="value highlight" id="info-pos">—</span></div>
+                <div class="info-row"><span class="label">Velocity</span><span class="value" id="info-vel">—</span></div>
+                <div class="info-row"><span class="label">On floor</span><span class="value" id="info-floor">—</span></div>
+            </div>
+            <div class="side-section">
+                <div class="section-header">Level</div>
+                <div class="info-row"><span class="label">Progress</span><span class="value highlight" id="info-progress">—</span></div>
+            </div>
+            <div class="side-section" data-dev="performance">
+                <div class="section-header">Performance</div>
+                <div class="info-row"><span class="label">FPS</span><span class="value" id="info-fps">—</span></div>
+                <div class="info-row"><span class="label">Zoom</span><span class="value" id="info-zoom">100%</span></div>
+            </div>
+        </div>
+    </div>
 
-        <input type="file" id="file-input" accept=".js">
-        <button onclick="loadFile()">Load File</button>
+    <div id="loading-overlay">Loading map…</div>
 
-        <input type="text" id="url-input" placeholder="Enter map URL...">
-        <button onclick="loadURL()">Load from URL</button>
-
-        <label>
-            <input type="checkbox" id="viewport" onclick="game.limit_viewport=this.checked;" checked/> Confine viewport
-        </label>
+    <div id="menu-overlay">
+        <div id="menu-modal">
+            <button id="menu-close" onclick="hideMenu()">✕</button>
+            <div id="menu-sidebar">
+                <div class="menu-nav-item active" data-page="splash">Menu</div>
+                <div class="menu-nav-item" data-page="about">About</div>
+                <div class="menu-nav-item" data-page="settings">Settings</div>
+                <div class="menu-nav-item" data-page="appearance">Appearance</div>
+            </div>
+            <div id="menu-content">
+                <div id="page-splash" class="menu-page active">
+                    <h1>Clarity</h1>
+                    <p class="subtitle">A MINIMAL TILE-BASED PLATFORMER</p>
+                    <div class="divider"></div>
+                    <button class="btn-start" onclick="hideMenu()">Start Game</button>
+                    <p style="margin-top:18px;font-size:11px;color:#555;">
+                        <label style="color:#666;cursor:pointer;">
+                            <input type="checkbox" id="chk-splash" onchange="saveSetting('showSplash', this.checked)" checked style="vertical-align:middle;">
+                            Show on launch
+                        </label>
+                    </p>
+                </div>
+                <div id="page-about" class="menu-page">
+                    <h1>About</h1>
+                    <div class="divider"></div>
+                    <p class="about-text">
+                        Clarity is a simple 2D platformer engine built with pure JavaScript and Canvas.
+                        Navigate tile-based worlds, collect keys, unlock doors, and reach the goal.
+                        Originally created by
+                        <a href="https://github.com/dissimulate/Clarity/" target="_blank">dissimulate</a>.
+                    </p>
+                </div>
+                <div id="page-settings" class="menu-page">
+                    <h1>Settings</h1>
+                    <div class="divider"></div>
+                    <div style="text-align:left;max-width:380px;margin:0 auto;font-size:12px;">
+                        <p style="margin-bottom:10px;color:#aaa;">General</p>
+                        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#ccc;cursor:pointer;">
+                            <input type="checkbox" id="chk-splash-settings" onchange="saveSetting('showSplash', this.checked)" checked>
+                            Show splash screen on launch
+                        </label>
+                    </div>
+                </div>
+                <div id="page-appearance" class="menu-page">
+                    <h1>Appearance</h1>
+                    <div class="divider"></div>
+                    <div style="text-align:left;max-width:380px;margin:0 auto;font-size:12px;">
+                        <p style="margin-bottom:10px;color:#aaa;">Side Panel</p>
+                        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#ccc;cursor:pointer;">
+                            <input type="checkbox" id="chk-show-player" onchange="saveSetting('showPlayer', this.checked)">
+                            Show player info
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#ccc;cursor:pointer;">
+                            <input type="checkbox" id="chk-show-perf" onchange="saveSetting('showPerf', this.checked)">
+                            Show performance
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="text/javascript">
@@ -86,16 +549,35 @@
         var canvas = document.getElementById('canvas'),
             ctx    = canvas.getContext('2d');
 
-        canvas.width = 400;
-        canvas.height = 400;
+        var dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
+        var VP_W = 400;
+        var VP_H = 400;
+        var zoom = 1;
+
+        function resizeCanvas() {
+            canvas.width = VP_W * dpr;
+            canvas.height = VP_H * dpr;
+            canvas.style.width = VP_W + 'px';
+            canvas.style.height = VP_H + 'px';
+        }
+        resizeCanvas();
 
         var game = new Clarity();
-        game.set_viewport(canvas.width, canvas.height);
+        game.set_viewport(VP_W, VP_H);
 
         var _origLoadMap = game.load_map.bind(game);
         game.load_map = function (map) {
             var ret = _origLoadMap(JSON.parse(JSON.stringify(map)));
             updateLevelInfo();
+            updateSidePanel();
+            game.limit_viewport = document.getElementById('viewport').checked;
+            return ret;
+        };
+
+        var _origLoadModularMap = game.loadModularMap.bind(game);
+        game.loadModularMap = function (index) {
+            var ret = _origLoadModularMap(index);
+            game.limit_viewport = document.getElementById('viewport').checked;
             return ret;
         };
 
@@ -103,7 +585,7 @@
             game.modularData = null;
             game.source_map = JSON.parse(JSON.stringify(data));
             game.load_map(data);
-            game.limit_viewport = true;
+            game.limit_viewport = document.getElementById('viewport').checked;
         }
 
         function loadModularData(data) {
@@ -111,6 +593,8 @@
             game.modularIndex = 0;
             game.loadModularMap(0);
         }
+
+        /* ---- UI Updates ---- */
 
         function updateLevelInfo() {
             var info = document.getElementById('level-info');
@@ -124,12 +608,44 @@
             }
         }
 
+        function updateSidePanel() {
+            var map = game.current_map;
+            document.getElementById('info-name').textContent = map ? (map.name || 'unnamed') : '—';
+            document.getElementById('info-size').textContent = map ? (map.width_p + '×' + map.height_p + ' px') : '—';
+            document.getElementById('info-tiles').textContent = map ? (map.data[0].length + '×' + map.data.length) : '—';
+            document.getElementById('info-zoom').textContent = Math.round(zoom * 100) + '%';
+
+            if (game.modularData && game.current_map) {
+                document.getElementById('info-progress').textContent = (game.modularIndex + 1) + ' / ' + game.modularData.maps.length;
+            } else {
+                document.getElementById('info-progress').textContent = '—';
+            }
+        }
+
+        function updatePlayerInfo() {
+            if (!game.current_map || !game.tile_size) return;
+            var px = game.player.loc.x / game.tile_size;
+            var py = game.player.loc.y / game.tile_size;
+            document.getElementById('info-pos').textContent = px.toFixed(1) + ', ' + py.toFixed(1);
+            document.getElementById('info-vel').textContent = game.player.vel.x.toFixed(2) + ', ' + game.player.vel.y.toFixed(2);
+            document.getElementById('info-floor').textContent = game.player.on_floor ? 'Yes' : 'No';
+        }
+
+        /* ---- Map Loading ---- */
+
         function loadMap(url) {
             var old = document.getElementById('map-script');
             if (old) old.remove();
             var script = document.createElement('script');
             script.id = 'map-script';
             script.src = url;
+            document.getElementById('loading-overlay').classList.add('visible');
+            script.onload = function() {
+                document.getElementById('loading-overlay').classList.remove('visible');
+            };
+            script.onerror = function() {
+                document.getElementById('loading-overlay').classList.remove('visible');
+            };
             document.head.appendChild(script);
         }
 
@@ -167,29 +683,191 @@
         manifestScript.src = 'maps/manifest.js';
         document.head.appendChild(manifestScript);
 
-        var lastTime = performance.now();
-        var Loop = function() {
+        /* ---- Zen Mode ---- */
 
+        var zenMode = false;
+
+        function toggleZen() {
+            zenMode = !zenMode;
+            document.getElementById('game-area').classList.toggle('zen', zenMode);
+            document.getElementById('side-panel').classList.toggle('closed', zenMode);
+            document.getElementById('topbar').style.display = zenMode ? 'none' : '';
+            document.getElementById('zen-btn').classList.toggle('active', zenMode);
+            document.getElementById('zen-btn').textContent = zenMode ? '◉ Exit Zen' : '◉ Zen';
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && zenMode) toggleZen();
+        });
+
+        /* ---- Zoom ---- */
+
+        var zoomSlider = document.getElementById('zoom-slider');
+        var zoomLabel = document.getElementById('zoom-label');
+
+        function setZoom(percent) {
+            zoom = percent / 100;
+            canvas.style.transform = 'scale(' + zoom + ')';
+            zoomLabel.textContent = percent + '%';
+            document.getElementById('info-zoom').textContent = percent + '%';
+        }
+
+        zoomSlider.addEventListener('input', function () {
+            setZoom(parseInt(this.value));
+        });
+
+        /* ---- Settings (localStorage) ---- */
+
+        function loadSettings() {
+            try {
+                var raw = localStorage.getItem('clarity-settings');
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function saveSetting(key, value) {
+            var settings = loadSettings();
+            settings[key] = value;
+            try {
+                localStorage.setItem('clarity-settings', JSON.stringify(settings));
+            } catch (e) {}
+            var el = document.getElementById('chk-splash');
+            var el2 = document.getElementById('chk-splash-settings');
+            if (el) el.checked = !!value;
+            if (el2) el2.checked = !!value;
+            var el3 = document.getElementById('chk-show-player');
+            var el4 = document.getElementById('chk-show-perf');
+            if (el3) el3.checked = !!loadSettings().showPlayer;
+            if (el4) el4.checked = !!loadSettings().showPerf;
+            if (key === 'lockViewport') {
+                var vp = document.getElementById('viewport');
+                if (vp) vp.checked = !!value;
+                game.limit_viewport = !!value;
+            }
+            applySidePanelSettings();
+        }
+
+        function onLockChange(checked) {
+            game.limit_viewport = checked;
+            saveSetting('lockViewport', checked);
+        }
+
+        function applySetting(key, checkboxId) {
+            var settings = loadSettings();
+            var el = document.getElementById(checkboxId);
+            if (el && settings.hasOwnProperty(key)) {
+                el.checked = !!settings[key];
+            }
+        }
+
+        function applySidePanelSettings() {
+            var s = loadSettings();
+            var playerSec = document.querySelector('.side-section[data-dev="player"]');
+            var perfSec = document.querySelector('.side-section[data-dev="performance"]');
+            if (playerSec) playerSec.classList.toggle('hidden', s.showPlayer === false);
+            if (perfSec) perfSec.classList.toggle('hidden', s.showPerf === false);
+        }
+
+        /* ---- Menu ---- */
+
+        var menuOverlay = document.getElementById('menu-overlay');
+
+        applySetting('showSplash', 'chk-splash');
+        applySetting('showSplash', 'chk-splash-settings');
+        applySetting('showPlayer', 'chk-show-player');
+        applySetting('showPerf', 'chk-show-perf');
+        applySidePanelSettings();
+
+        var initSettings = loadSettings();
+        if (initSettings.hasOwnProperty('lockViewport')) {
+            document.getElementById('viewport').checked = !!initSettings.lockViewport;
+            game.limit_viewport = !!initSettings.lockViewport;
+        } else {
+            document.getElementById('viewport').checked = true;
+            game.limit_viewport = true;
+        }
+
+        var settings = loadSettings();
+        if (settings.showSplash === false) {
+            menuOverlay.classList.add('hidden');
+        } else {
+            menuOverlay.classList.remove('hidden');
+        }
+
+        function showMenu() {
+            menuOverlay.classList.remove('hidden');
+        }
+
+        function hideMenu() {
+            menuOverlay.classList.add('hidden');
+        }
+
+        menuOverlay.addEventListener('click', function (e) {
+            if (e.target === menuOverlay) hideMenu();
+        });
+
+        document.querySelectorAll('.menu-nav-item').forEach(function (item) {
+            item.addEventListener('click', function () {
+                document.querySelectorAll('.menu-nav-item').forEach(function (n) { n.classList.remove('active'); });
+                document.querySelectorAll('.menu-page').forEach(function (p) { p.classList.remove('active'); });
+                item.classList.add('active');
+                var page = document.getElementById('page-' + item.getAttribute('data-page'));
+                if (page) page.classList.add('active');
+            });
+        });
+
+        /* ---- Game Loop ---- */
+
+        var lastTime = performance.now();
+        var frameCount = 0;
+        var fpsTime = 0;
+        var fpsDisplay = 0;
+
+        var Loop = function() {
             var now = performance.now();
             var elapsed = now - lastTime;
             game.dt = Math.min(elapsed / (1000 / 60), 3);
             if (elapsed > 200) game.dt = 1;
             lastTime = now;
 
-            ctx.fillStyle = game.current_map ? game.current_map.background : '#333';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.scale(dpr, dpr);
+
+            ctx.fillStyle = game.current_map ? game.current_map.background : '#1a1a1a';
+            ctx.fillRect(0, 0, VP_W, VP_H);
 
             if (game.current_map) {
                 game.update();
                 game.draw(ctx);
             }
 
+            if (zenMode) {
+                ctx.fillStyle = 'rgba(255,255,255,0.03)';
+                ctx.font = '11px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('Press Esc to exit zen mode', VP_W / 2, VP_H - 8);
+            }
+
+            ctx.restore();
+
             window.requestAnimFrame(Loop);
+
+            frameCount++;
+            fpsTime += elapsed;
+            if (fpsTime >= 1000) {
+                fpsDisplay = frameCount;
+                frameCount = 0;
+                fpsTime = 0;
+                document.getElementById('info-fps').textContent = fpsDisplay;
+            }
+
+            updatePlayerInfo();
         };
 
         Loop();
-        
+
     </script>
 </body>
-
 </html>

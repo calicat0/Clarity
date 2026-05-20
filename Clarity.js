@@ -207,8 +207,8 @@ Clarity.prototype.draw_tile = function (x, y, tile, context) {
 
     context.fillStyle = tile.colour;
     context.fillRect(
-        x,
-        y,
+        Math.round(x),
+        Math.round(y),
         this.tile_size,
         this.tile_size
     );
