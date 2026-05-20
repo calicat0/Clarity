@@ -60,6 +60,7 @@ var Clarity = function () {
     };
 
     this.dt = 1;
+    this.checkpoint = null;
 
     window.onkeydown = this.keydown.bind(this);
     window.onkeyup   = this.keyup.bind(this);
@@ -189,8 +190,8 @@ Clarity.prototype.loadModularMap = function (index) {
     this.modularIndex = index;
     var mapData = JSON.parse(JSON.stringify(this.modularData.maps[index]));
     if (!mapData.scripts) mapData.scripts = {};
-    mapData.scripts.next_level = 'if(this.modularData){if(this.modularIndex+1<this.modularData.maps.length){this.loadModularMap(this.modularIndex+1);}else{alert("All levels complete!");}}else{alert("You win!");this.load_map(this.source_map);}';
-    mapData.scripts.death = 'if(this.modularData){this.loadModularMap(this.modularIndex);}else{alert("You died!");this.load_map(this.source_map);}';
+    mapData.scripts.next_level = 'this.checkpoint=null;if(this.modularData){if(this.modularIndex+1<this.modularData.maps.length){this.loadModularMap(this.modularIndex+1);}else{alert("All levels complete!");}}else{alert("You win!");this.load_map(this.source_map);}';
+    mapData.scripts.death = '';
     this.source_map = mapData;
     this.load_map(mapData);
     this.limit_viewport = true;
@@ -422,8 +423,11 @@ Clarity.prototype.move_player = function () {
     }
     
     if(this.last_tile != tile.id && tile.script) {
-    
-        eval(this.current_map.scripts[tile.script]);
+        if (tile.script === "death") {
+            this.handleDeath();
+        } else {
+            eval(this.current_map.scripts[tile.script]);
+        }
     }
     
     this.last_tile = tile.id;
@@ -475,6 +479,76 @@ Clarity.prototype.draw_player = function (context) {
 Clarity.prototype.update = function () {
 
     this.update_player();
+};
+
+Clarity.prototype.showMessage = function (text) {
+    var div = document.getElementById('game-message');
+    if (!div) {
+        div = document.createElement('div');
+        div.id = 'game-message';
+        div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:4px;font:16px monospace;z-index:9999;pointer-events:none;transition:opacity 0.5s;';
+        document.body.appendChild(div);
+    }
+    div.textContent = text;
+    div.style.opacity = '1';
+    clearTimeout(div._timeout);
+    div._timeout = setTimeout(function () {
+        div.style.opacity = '0';
+    }, 1500);
+};
+
+Clarity.prototype.getDoorStates = function () {
+    var states = [];
+    this.current_map.keys.forEach(function (k) {
+        if (k.isDoor) {
+            states.push({ id: k.id, solid: k.solid, colour: k.colour });
+        }
+    });
+    return states;
+};
+
+Clarity.prototype.activateCheckpoint = function (tileId) {
+    var cpTile = this.current_map.keys.find(function (k) { return k.id === tileId; });
+    if (!cpTile) return;
+
+    this.checkpoint = {
+        playerX: this.player.loc.x,
+        playerY: this.player.loc.y,
+        playerColour: this.player.colour,
+        doorStates: cpTile.saveDoorStates !== false ? this.getDoorStates() : []
+    };
+
+    if (cpTile.respawnMessage) {
+        this.showMessage(cpTile.respawnMessage);
+    }
+};
+
+Clarity.prototype.handleDeath = function () {
+    alert("You died!");
+    if (this.checkpoint) {
+        var cp = this.checkpoint;
+        if (this.modularData) {
+            this.loadModularMap(this.modularIndex);
+        } else if (this.source_map) {
+            this.load_map(this.source_map);
+        }
+        this.player.loc.x = cp.playerX;
+        this.player.loc.y = cp.playerY;
+        this.player.colour = cp.playerColour;
+        cp.doorStates.forEach(function (state) {
+            var door = this.current_map.keys.find(function (k) { return k.id === state.id; });
+            if (door) {
+                door.solid = state.solid;
+                door.colour = state.colour;
+            }
+        }, this);
+    } else {
+        if (this.modularData) {
+            this.loadModularMap(this.modularIndex);
+        } else if (this.source_map) {
+            this.load_map(this.source_map);
+        }
+    }
 };
 
 Clarity.prototype.draw = function (context) {

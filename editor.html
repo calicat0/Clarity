@@ -577,6 +577,14 @@
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-is-death"> Is Death (kill player, auto non-solid)</label>
                 </div>
+                <div class="prop-row">
+                    <label><input type="checkbox" id="custom-is-checkpoint" onchange="document.getElementById('checkpoint-msg-row').style.display=this.checked?'':'none'"> Is Checkpoint</label>
+                    <label><input type="checkbox" id="custom-save-door-states" checked> Save Door States</label>
+                </div>
+                <div class="prop-row" id="checkpoint-msg-row" style="display:none">
+                    <label><input type="checkbox" id="custom-respawn-enabled"> Respawn Message</label>
+                    <label>Text: <input type="text" id="custom-respawn-msg" value="Checkpoint saved!" style="width:180px"></label>
+                </div>
             </div>
             <div style="margin-top:10px;display:flex;gap:6px;">
                 <button onclick="confirmCustomBlock()" id="custom-modal-confirm">Add Tile</button>
@@ -594,6 +602,7 @@
         var eraserOn = false;
         var TILE = 28;
         var painting = false;
+        var pickingSpawn = false;
         var defaultTileNames = ['air', 'floor', 'brick', 'water', 'platform', 'bounce', 'wall', 'shift', 'goal', 'lava', 'block', 'key'];
         var undoStack = [];
         var undoIndex = -1;
@@ -700,6 +709,11 @@
             document.getElementById('cc-random').checked = true;
             document.getElementById('custom-cc-colour').value = '#FF9900';
             document.getElementById('custom-is-death').checked = false;
+            document.getElementById('custom-is-checkpoint').checked = false;
+            document.getElementById('custom-save-door-states').checked = true;
+            document.getElementById('custom-respawn-enabled').checked = false;
+            document.getElementById('custom-respawn-msg').value = 'Checkpoint saved!';
+            document.getElementById('checkpoint-msg-row').style.display = 'none';
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -733,6 +747,11 @@
                 document.getElementById('cc-random').checked = true;
             }
             document.getElementById('custom-is-death').checked = key.script === 'death';
+            document.getElementById('custom-is-checkpoint').checked = !!key.isCheckpoint;
+            document.getElementById('custom-save-door-states').checked = key.saveDoorStates !== false;
+            document.getElementById('custom-respawn-enabled').checked = !!key.respawnMessage;
+            document.getElementById('custom-respawn-msg').value = key.respawnMessage || 'Checkpoint saved!';
+            document.getElementById('checkpoint-msg-row').style.display = key.isCheckpoint ? '' : 'none';
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -838,10 +857,39 @@
                 key.script = 'death';
                 key.solid = 0;
                 if (!mapData.scripts.death) {
-                    mapData.scripts.death = 'alert(\"You died!\");this.load_map(this.source_map);';
+                    mapData.scripts.death = '';
                 }
             } else {
                 if (key.script === 'death') delete key.script;
+            }
+            if (document.getElementById('custom-is-checkpoint').checked) {
+                var cpId = key.id;
+                var scriptName = 'checkpoint_' + cpId;
+                if (key.script && key.script.startsWith('checkpoint_') && key.script !== scriptName) {
+                    delete mapData.scripts[key.script];
+                }
+                key.script = scriptName;
+                key.isCheckpoint = true;
+                key.solid = 0;
+                if (document.getElementById('custom-save-door-states').checked) {
+                    key.saveDoorStates = true;
+                } else {
+                    key.saveDoorStates = false;
+                }
+                if (document.getElementById('custom-respawn-enabled').checked) {
+                    key.respawnMessage = document.getElementById('custom-respawn-msg').value || 'Checkpoint saved!';
+                } else {
+                    delete key.respawnMessage;
+                }
+                mapData.scripts[scriptName] = 'this.activateCheckpoint(' + cpId + ');';
+            } else {
+                if (key.script && key.script.startsWith('checkpoint_')) {
+                    delete mapData.scripts[key.script];
+                }
+                delete key.isCheckpoint;
+                delete key.saveDoorStates;
+                delete key.respawnMessage;
+                if (key.script && key.script.startsWith('checkpoint_')) delete key.script;
             }
             hideCustomDialog();
             renderPaletteTiles();
@@ -1163,6 +1211,9 @@
                     + '<label title="Bounce"><input type="number" step="0.05" value="' + (key.bounce || 0) + '" onchange="updateTileProp(' + key.id + ',\'bounce\',parseFloat(this.value)||0)" style="width:38px">B</label>'
                     + '<label><input type="checkbox" ' + (key.jump ? 'checked' : '') + ' onchange="updateTileProp(' + key.id + ',\'jump\',this.checked?1:0)">J</label>'
                     + '<span class="tile-name">' + (key.name || defaultTileNames[i] || '') + '</span>';
+                if (key.isCheckpoint) {
+                    html += '<label title="Save Door States"><input type="checkbox" ' + (key.saveDoorStates !== false ? 'checked' : '') + ' onchange="updateTileProp(' + key.id + ',\'saveDoorStates\',this.checked)">D</label>';
+                }
                 if (key.id > 11) {
                     html += '<button onclick="showEditCustomDialog(' + key.id + ')" style="font-size:10px;padding:1px 4px;margin-left:4px;" title="Edit">✎</button>';
                     html += '<button onclick="deleteCustomBlock(' + key.id + ')" style="font-size:10px;padding:1px 4px;" title="Delete">✕</button>';
@@ -1212,6 +1263,7 @@
                 + '<div class="prop-row">'
                 + '<label>Player: x<input type="number" value="' + (m.player && m.player.x || 0) + '" onchange="setMapProp(\'player\',\'x\',parseInt(this.value)||0)"></label>'
                 + '<label>y<input type="number" value="' + (m.player && m.player.y || 0) + '" onchange="setMapProp(\'player\',\'y\',parseInt(this.value)||0)"></label>'
+                + '<button id="pick-spawn-btn" onclick="pickSpawn()" style="font-size:10px;padding:1px 6px;cursor:pointer;">Pick</button>'
                 + '<label>colour<input type="color" value="' + esc(m.player && m.player.colour) + '" onchange="setMapProp(\'player\',\'colour\',this.value)"></label>'
                 + '<input type="text" value="' + esc(m.player && m.player.colour) + '" onchange="setMapProp(\'player\',\'colour\',this.value)" style="width:56px;font-size:10px;padding:1px 3px">'
                 + '</div>';
@@ -1316,6 +1368,23 @@
                     ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
                 }
             }
+            if (mapData.player && mapData.player.x !== undefined && mapData.player.y !== undefined) {
+                var sx = mapData.player.x * TILE + TILE / 2;
+                var sy = mapData.player.y * TILE + TILE / 2;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.beginPath();
+                ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(sx - 6, sy);
+                ctx.lineTo(sx + 6, sy);
+                ctx.moveTo(sx, sy - 6);
+                ctx.lineTo(sx, sy + 6);
+                ctx.stroke();
+            }
         }
 
         function getGridPos(e) {
@@ -1357,7 +1426,31 @@
             ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
         }
 
+        function pickSpawn() {
+            pickingSpawn = !pickingSpawn;
+            var btn = document.getElementById('pick-spawn-btn');
+            if (btn) {
+                btn.style.background = pickingSpawn ? '#555' : '';
+                btn.style.borderColor = pickingSpawn ? '#888' : '';
+            }
+            document.getElementById('grid').style.cursor = pickingSpawn ? 'crosshair' : '';
+        }
+
         document.getElementById('grid').addEventListener('mousedown', function(e) {
+            if (pickingSpawn) {
+                var pos = getGridPos(e);
+                if (!mapData.player) mapData.player = {};
+                mapData.player.x = pos.x;
+                mapData.player.y = pos.y;
+                pickingSpawn = false;
+                var btn = document.getElementById('pick-spawn-btn');
+                if (btn) { btn.style.background = ''; btn.style.borderColor = ''; }
+                document.getElementById('grid').style.cursor = '';
+                renderProps();
+                renderGrid();
+                pushHistory();
+                return;
+            }
             if (e.button === 2) { eraserOn = true; document.getElementById('eraser-btn').classList.add('active'); }
             painting = true;
             painted = false;

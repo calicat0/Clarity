@@ -584,6 +584,7 @@
         function loadMapData(data) {
             game.modularData = null;
             game.source_map = JSON.parse(JSON.stringify(data));
+            game.checkpoint = null;
             game.load_map(data);
             game.limit_viewport = document.getElementById('viewport').checked;
         }
@@ -591,6 +592,7 @@
         function loadModularData(data) {
             game.modularData = JSON.parse(JSON.stringify(data));
             game.modularIndex = 0;
+            game.checkpoint = null;
             game.loadModularMap(0);
         }
 
