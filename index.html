@@ -764,10 +764,12 @@
 
         function applySidePanelSettings() {
             var s = loadSettings();
+            var showPlayer = s.hasOwnProperty('showPlayer') ? s.showPlayer : false;
+            var showPerf = s.hasOwnProperty('showPerf') ? s.showPerf : false;
             var playerSec = document.querySelector('.side-section[data-dev="player"]');
             var perfSec = document.querySelector('.side-section[data-dev="performance"]');
-            if (playerSec) playerSec.classList.toggle('hidden', s.showPlayer === false);
-            if (perfSec) perfSec.classList.toggle('hidden', s.showPerf === false);
+            if (playerSec) playerSec.classList.toggle('hidden', !showPlayer);
+            if (perfSec) perfSec.classList.toggle('hidden', !showPerf);
         }
 
         /* ---- Menu ---- */
