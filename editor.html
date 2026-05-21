@@ -3,6 +3,7 @@
 
 <head>
     <title>Clarity Map Editor</title>
+    <script type="text/javascript" src="Clarity.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -433,6 +434,167 @@
         .custom-modal-body .prop-row {
             margin-bottom: 6px;
         }
+        /* Playtester overlay */
+        #playtest-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #1a1a1a;
+            z-index: 300;
+            flex-direction: column;
+        }
+        #playtest-overlay.open {
+            display: flex;
+        }
+        #playtest-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            border-bottom: 1px solid #444;
+            flex-shrink: 0;
+            background: #1a1a1a;
+        }
+        #playtest-topbar .pt-title {
+            font-size: 13px;
+            color: #aaa;
+        }
+        #playtest-topbar button {
+            font-size: 12px;
+        }
+        #playtest-main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+        #playtest-game-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            min-width: 0;
+        }
+        #playtest-canvas {
+            display: block;
+            border: 1px solid #333;
+            box-shadow: 0 0 16px 2px rgba(0,0,0,0.8);
+            transform-origin: center center;
+            transition: transform 0.15s ease;
+        }
+        #playtest-side input[type="range"] {
+            width: 80px;
+            vertical-align: middle;
+            background: #111;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            border: none;
+            outline: none;
+            padding: 0;
+        }
+        #playtest-side input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #888;
+            cursor: pointer;
+            border: none;
+        }
+        #playtest-side input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #888;
+            cursor: pointer;
+            border: none;
+        }
+        #playtest-side input[type="checkbox"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border: 1px solid #555;
+            background: #111;
+            cursor: pointer;
+            vertical-align: middle;
+            position: relative;
+            flex-shrink: 0;
+            margin: 0;
+        }
+        #playtest-side input[type="checkbox"]:checked {
+            background: #555;
+            border-color: #888;
+        }
+        #playtest-side input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            line-height: 1;
+            color: #ddd;
+        }
+        #pt-zoom-label {
+            font-size: 11px;
+            color: #888;
+            min-width: 36px;
+            text-align: right;
+        }
+        #playtest-side {
+            width: 240px;
+            flex-shrink: 0;
+            border-left: 1px solid #444;
+            background: #222;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .pt-section {
+            margin-bottom: 2px;
+        }
+        .pt-section .pt-header {
+            font-weight: bold;
+            font-size: 11px;
+            color: #aaa;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 4px;
+            user-select: none;
+        }
+        .pt-section .pt-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            font-size: 11px;
+        }
+        .pt-section .pt-row .pt-label {
+            color: #888;
+        }
+        .pt-section .pt-row .pt-value {
+            color: #ddd;
+        }
+        .pt-section .pt-row .pt-value.highlight {
+            color: #bbb;
+        }
+        #playtest-side button {
+            width: 100%;
+            padding: 6px 8px;
+            font-size: 11px;
+            margin: 2px 0;
+            cursor: pointer;
+        }
+        #playtest-side button:hover {
+            background: #333;
+        }
     </style>
 </head>
 
@@ -460,6 +622,7 @@
         </span>
         <span class="sep"></span>
         <button id="eraser-btn" onclick="toggleEraser()">Eraser</button>
+        <button id="xray-btn" onclick="toggleXray()">X-Ray</button>
         <span class="sep"></span>
         <button onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onclick="redo()" id="redo-btn" disabled title="Redo (Ctrl+Shift+Z)">↪ Redo</button>
@@ -467,6 +630,8 @@
         <button onclick="showAddCustomDialog()">+ Add Block</button>
         <span class="sep"></span>
         <button id="side-toggle" onclick="toggleSidePanel()">☰ Props</button>
+        <span class="sep"></span>
+        <button onclick="openPlaytest()">▶ Playtest</button>
         <span id="status"></span>
     </div>
 
@@ -585,10 +750,68 @@
                     <label><input type="checkbox" id="custom-respawn-enabled"> Respawn Message</label>
                     <label>Text: <input type="text" id="custom-respawn-msg" value="Checkpoint saved!" style="width:180px"></label>
                 </div>
+                <div class="prop-row">
+                    <label><input type="checkbox" id="custom-has-task" onchange="toggleTaskFields()"> Has Task</label>
+                    <label>Task ID: <input type="number" id="custom-task-id" value="1" min="0" style="width:52px"></label>
+                </div>
+                <div class="prop-row" id="task-type-row" style="display:none">
+                    <label>Type: <select id="custom-task-type" onchange="toggleTaskFields()">
+                        <option value="persistent">Persistent</option>
+                        <option value="timeout">Timed</option>
+                    </select></label>
+                </div>
+                <div class="prop-row" id="task-msg-row" style="display:none">
+                    <label>Message: <input type="text" id="custom-task-msg" value="" style="width:240px"></label>
+                </div>
+                <div class="prop-row" id="task-duration-row" style="display:none">
+                    <label>Duration: <input type="number" id="custom-task-duration" value="5" min="1" max="60" style="width:52px"> seconds</label>
+                </div>
+                <div class="prop-row">
+                    <label>Completes Task ID: <input type="number" id="custom-completes-task-id" value="0" min="0" style="width:52px"></label>
+                </div>
             </div>
             <div style="margin-top:10px;display:flex;gap:6px;">
                 <button onclick="confirmCustomBlock()" id="custom-modal-confirm">Add Tile</button>
                 <button onclick="hideCustomDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="playtest-overlay">
+        <div id="playtest-topbar">
+            <span class="pt-title">Playtest — <span id="pt-map-name"></span></span>
+            <div><button onclick="closePlaytest()">✕ Close</button></div>
+        </div>
+        <div id="playtest-main">
+            <div id="playtest-game-area">
+                <canvas id="playtest-canvas"></canvas>
+            </div>
+            <div id="playtest-side">
+                <div class="pt-section">
+                    <div class="pt-header">Controls</div>
+                    <div class="pt-row"><span class="pt-label">Move</span><span class="pt-value">Arrows / WASD</span></div>
+                    <div class="pt-row"><span class="pt-label">Jump</span><span class="pt-value">Up / W / Space</span></div>
+                    <div class="pt-row"><span class="pt-label">Teleport</span><span class="pt-value">Left-click canvas</span></div>
+                </div>
+                <div class="pt-section">
+                    <div class="pt-header">Actions</div>
+                    <button onclick="playtestSaveCheckpoint()">Save Checkpoint</button>
+                </div>
+                <div class="pt-section">
+                    <div class="pt-header">View</div>
+                    <div class="pt-row"><span class="pt-label">Zoom</span><span class="pt-value"><input type="range" id="pt-zoom" min="25" max="300" value="100" oninput="playtestSetZoom(this.value)"> <span id="pt-zoom-label">100%</span></span></div>
+                    <div class="pt-row"><span class="pt-label">Lock camera</span><span class="pt-value"><input type="checkbox" id="pt-lock" onchange="playtestSetLock(this.checked)" checked></span></div>
+                </div>
+                <div class="pt-section">
+                    <div class="pt-header">Player</div>
+                    <div class="pt-row"><span class="pt-label">Position</span><span class="pt-value highlight" id="pt-pos">—</span></div>
+                    <div class="pt-row"><span class="pt-label">Velocity</span><span class="pt-value" id="pt-vel">—</span></div>
+                    <div class="pt-row"><span class="pt-label">On floor</span><span class="pt-value" id="pt-floor">—</span></div>
+                </div>
+                <div class="pt-section">
+                    <div class="pt-header">Checkpoint</div>
+                    <div class="pt-row"><span class="pt-label">Status</span><span class="pt-value" id="pt-cp">None</span></div>
+                </div>
             </div>
         </div>
     </div>
@@ -609,6 +832,7 @@
         var undoMax = 100;
         var skipHistory = false;
         var painted = false;
+        var xrayOn = false;
 
         function pushHistory() {
             if (skipHistory || !mapData) return;
@@ -714,6 +938,15 @@
             document.getElementById('custom-respawn-enabled').checked = false;
             document.getElementById('custom-respawn-msg').value = 'Checkpoint saved!';
             document.getElementById('checkpoint-msg-row').style.display = 'none';
+            document.getElementById('custom-has-task').checked = false;
+            document.getElementById('custom-task-id').value = '1';
+            document.getElementById('custom-task-type').value = 'persistent';
+            document.getElementById('custom-task-msg').value = '';
+            document.getElementById('custom-task-duration').value = '5';
+            document.getElementById('custom-completes-task-id').value = '0';
+            document.getElementById('task-type-row').style.display = 'none';
+            document.getElementById('task-msg-row').style.display = 'none';
+            document.getElementById('task-duration-row').style.display = 'none';
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -752,6 +985,16 @@
             document.getElementById('custom-respawn-enabled').checked = !!key.respawnMessage;
             document.getElementById('custom-respawn-msg').value = key.respawnMessage || 'Checkpoint saved!';
             document.getElementById('checkpoint-msg-row').style.display = key.isCheckpoint ? '' : 'none';
+            document.getElementById('custom-has-task').checked = !!key.isTask;
+            document.getElementById('custom-task-id').value = key.taskId || '1';
+            document.getElementById('custom-task-type').value = key.taskType || 'persistent';
+            document.getElementById('custom-task-msg').value = key.taskMessage || '';
+            document.getElementById('custom-task-duration').value = key.taskDuration || '5';
+            document.getElementById('custom-completes-task-id').value = key.completesTaskId || '0';
+            document.getElementById('task-type-row').style.display = key.isTask ? '' : 'none';
+            document.getElementById('task-msg-row').style.display = key.isTask ? '' : 'none';
+            var isTimed = key.isTask && (key.taskType === 'timeout');
+            document.getElementById('task-duration-row').style.display = isTimed ? '' : 'none';
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -820,6 +1063,11 @@
             var unlocks = parseInt(document.getElementById('custom-unlocks').value) || 0;
             var isDoor = document.getElementById('custom-is-door').checked;
             var lockKey = parseInt(document.getElementById('custom-lock-key').value) || 0;
+            var hasDeath = document.getElementById('custom-is-death').checked;
+            var hasCheckpoint = document.getElementById('custom-is-checkpoint').checked;
+            var hasCC = document.getElementById('custom-colour-change').checked;
+            var hasTask = document.getElementById('custom-has-task').checked;
+            var completesTaskId = parseInt(document.getElementById('custom-completes-task-id').value) || 0;
             if (!name) { alert('Please enter a name.'); return; }
             function buildKey(id) {
                 var k = {
@@ -837,60 +1085,105 @@
                 return k;
             }
             if (!mapData.scripts) mapData.scripts = {};
+            var oldScriptName = null;
             var key;
             if (editId) {
                 key = mapData.keys.find(function(k) { return k.id === parseInt(editId); });
                 if (!key) return;
-                var oldKey = {script: key.script};
+                oldScriptName = key.script || null;
                 var built = buildKey(key.id);
                 Object.keys(built).forEach(function(p) { key[p] = built[p]; });
-                updateKeyDoorScript(key, oldKey);
-                setColourChangeScript(key, oldKey);
             } else {
-                var id = getNextTileId();
-                key = buildKey(id);
+                key = buildKey(getNextTileId());
                 mapData.keys.push(key);
-                updateKeyDoorScript(key, null);
-                setColourChangeScript(key, null);
             }
-            if (document.getElementById('custom-is-death').checked) {
+
+            var scriptParts = [];
+
+            // Key unlock
+            if (key.isKey && key.unlocks && key.unlocks > 0) {
+                scriptParts.push('var door=this.current_map.keys.find(function(k){return k.id===' + key.unlocks + ';});if(door&&door.solid){door.solid=0;door.colour=\"#888\";}');
+            }
+
+            // Colour change
+            if (hasCC) {
+                var ccCustom = document.getElementById('cc-custom').checked;
+                var ccColour = ccCustom ? document.getElementById('custom-cc-colour').value : '';
+                if (ccCustom && ccColour) {
+                    scriptParts.push('this.player.colour = \"' + ccColour + '\";');
+                    key.ccColour = ccColour;
+                } else {
+                    scriptParts.push('this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);');
+                    delete key.ccColour;
+                }
+            } else {
+                delete key.ccColour;
+            }
+
+            // Death (special: engine checks key.script === "death")
+            if (hasDeath) {
                 key.script = 'death';
                 key.solid = 0;
-                if (!mapData.scripts.death) {
-                    mapData.scripts.death = '';
-                }
-            } else {
-                if (key.script === 'death') delete key.script;
+                if (!mapData.scripts.death) mapData.scripts.death = '';
             }
-            if (document.getElementById('custom-is-checkpoint').checked) {
-                var cpId = key.id;
-                var scriptName = 'checkpoint_' + cpId;
-                if (key.script && key.script.startsWith('checkpoint_') && key.script !== scriptName) {
-                    delete mapData.scripts[key.script];
-                }
-                key.script = scriptName;
+
+            // Checkpoint
+            if (hasCheckpoint) {
                 key.isCheckpoint = true;
                 key.solid = 0;
-                if (document.getElementById('custom-save-door-states').checked) {
-                    key.saveDoorStates = true;
-                } else {
-                    key.saveDoorStates = false;
-                }
+                key.saveDoorStates = document.getElementById('custom-save-door-states').checked ? true : false;
                 if (document.getElementById('custom-respawn-enabled').checked) {
                     key.respawnMessage = document.getElementById('custom-respawn-msg').value || 'Checkpoint saved!';
                 } else {
                     delete key.respawnMessage;
                 }
-                mapData.scripts[scriptName] = 'this.activateCheckpoint(' + cpId + ');';
+                scriptParts.push('this.activateCheckpoint(' + key.id + ');');
             } else {
-                if (key.script && key.script.startsWith('checkpoint_')) {
-                    delete mapData.scripts[key.script];
-                }
                 delete key.isCheckpoint;
                 delete key.saveDoorStates;
                 delete key.respawnMessage;
-                if (key.script && key.script.startsWith('checkpoint_')) delete key.script;
             }
+
+            // Task
+            delete key.isTask;
+            delete key.taskType;
+            delete key.taskMessage;
+            delete key.taskId;
+            delete key.taskDuration;
+            delete key.completesTaskId;
+            if (hasTask) {
+                var taskId = parseInt(document.getElementById('custom-task-id').value) || key.id;
+                var taskType = document.getElementById('custom-task-type').value;
+                var taskMessage = document.getElementById('custom-task-msg').value.trim();
+                var taskDuration = parseFloat(document.getElementById('custom-task-duration').value) || 5;
+                key.isTask = true;
+                key.taskId = taskId;
+                key.taskType = taskType;
+                key.taskMessage = taskMessage || ('Task ' + taskId);
+                if (taskType === 'timeout') key.taskDuration = taskDuration;
+                var escapedMsg = (key.taskMessage || '').replace(/"/g, '\\"');
+                scriptParts.push('this.addTask(' + taskId + ',"' + escapedMsg + '","' + taskType + '",' + (taskDuration || 5) + ');');
+            }
+            if (completesTaskId > 0) {
+                key.completesTaskId = completesTaskId;
+                scriptParts.push('this.completeTask(' + completesTaskId + ');');
+            }
+
+            // Clean up old script from previous save
+            if (oldScriptName && oldScriptName !== 'death') {
+                delete mapData.scripts[oldScriptName];
+            }
+
+            // Set combined script
+            if (hasDeath) {
+            } else if (scriptParts.length > 0) {
+                var scriptName = 'combined_' + key.id;
+                mapData.scripts[scriptName] = scriptParts.join(' ');
+                key.script = scriptName;
+            } else {
+                delete key.script;
+            }
+
             hideCustomDialog();
             renderPaletteTiles();
             renderPaletteEditor();
@@ -930,10 +1223,10 @@
             if (!skipHistory) {
                 undoStack = [];
                 undoIndex = -1;
+                selectedId = 0;
+                eraserOn = false;
+                document.getElementById('eraser-btn').classList.remove('active');
             }
-            selectedId = 0;
-            eraserOn = false;
-            document.getElementById('eraser-btn').classList.remove('active');
             document.querySelector('[name="mapname"]').value = data.name || '';
             document.getElementById('status').textContent = 'Loaded: ' + (data.name || 'unnamed')
                 + ' | ' + data.data[0].length + 'x' + data.data.length + ' | ' + data.keys.length + ' tiles';
@@ -1091,6 +1384,20 @@
         function toggleEraser() {
             eraserOn = !eraserOn;
             document.getElementById('eraser-btn').classList.toggle('active', eraserOn);
+        }
+
+        function toggleXray() {
+            xrayOn = !xrayOn;
+            document.getElementById('xray-btn').classList.toggle('active', xrayOn);
+            renderGrid();
+        }
+
+        function toggleTaskFields() {
+            var hasTask = document.getElementById('custom-has-task').checked;
+            document.getElementById('task-type-row').style.display = hasTask ? '' : 'none';
+            document.getElementById('task-msg-row').style.display = hasTask ? '' : 'none';
+            var isTimed = hasTask && document.getElementById('custom-task-type').value === 'timeout';
+            document.getElementById('task-duration-row').style.display = isTimed ? '' : 'none';
         }
 
         function toggleSidePanel() {
@@ -1366,6 +1673,16 @@
                     ctx.strokeStyle = '#444';
                     ctx.lineWidth = 0.5;
                     ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
+                    if (xrayOn && id !== undefined && id !== null) {
+                        ctx.fillStyle = '#fff';
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 3;
+                        ctx.font = 'bold 10px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.strokeText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+                        ctx.fillText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+                    }
                 }
             }
             if (mapData.player && mapData.player.x !== undefined && mapData.player.y !== undefined) {
@@ -1574,7 +1891,120 @@
             URL.revokeObjectURL(url);
             document.getElementById('status').textContent = 'Saved world as ' + a.download;
         }
+        /* Playtester */
+        var playtestGame = null;
+        var playtestRAF = null;
+        var playtestActive = false;
+        var ptVW = 400;
+        var ptVH = 400;
+
+        function openPlaytest() {
+            if (!mapData || playtestActive) return;
+            playtestActive = true;
+            var mapCopy = JSON.parse(JSON.stringify(mapData));
+            document.getElementById('pt-map-name').textContent = mapData.name || 'untitled';
+
+            playtestGame = new Clarity();
+            playtestGame.set_viewport(ptVW, ptVH);
+            playtestGame.limit_viewport = true;
+            playtestGame.load_map(mapCopy);
+
+            var canvas = document.getElementById('playtest-canvas');
+            var dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
+            canvas.width = ptVW * dpr;
+            canvas.height = ptVH * dpr;
+            canvas.style.width = ptVW + 'px';
+            canvas.style.height = ptVH + 'px';
+
+            document.getElementById('playtest-overlay').classList.add('open');
+
+            var last = performance.now();
+            function tick(now) {
+                if (!playtestActive) return;
+                var elapsed = now - last;
+                playtestGame.dt = Math.min(elapsed / (1000 / 60), 3);
+                if (elapsed > 200) playtestGame.dt = 1;
+                last = now;
+                var ctx = canvas.getContext('2d');
+                ctx.save();
+                ctx.scale(dpr, dpr);
+                ctx.fillStyle = playtestGame.current_map ? playtestGame.current_map.background : '#1a1a1a';
+                ctx.fillRect(0, 0, ptVW, ptVH);
+                if (playtestGame.current_map) {
+                    playtestGame.update();
+                    playtestGame.draw(ctx);
+                }
+                ctx.restore();
+                updatePlaytestInfo();
+                playtestRAF = requestAnimationFrame(tick);
+            }
+            playtestRAF = requestAnimationFrame(tick);
+        }
+
+        function closePlaytest() {
+            playtestActive = false;
+            if (playtestRAF) cancelAnimationFrame(playtestRAF);
+            playtestRAF = null;
+            playtestGame = null;
+            window.onkeydown = null;
+            window.onkeyup = null;
+            document.getElementById('playtest-overlay').classList.remove('open');
+        }
+
+        function updatePlaytestInfo() {
+            if (!playtestGame || !playtestGame.current_map) return;
+            var ts = playtestGame.tile_size;
+            document.getElementById('pt-pos').textContent = (playtestGame.player.loc.x / ts).toFixed(1) + ', ' + (playtestGame.player.loc.y / ts).toFixed(1);
+            document.getElementById('pt-vel').textContent = playtestGame.player.vel.x.toFixed(2) + ', ' + playtestGame.player.vel.y.toFixed(2);
+            document.getElementById('pt-floor').textContent = playtestGame.player.on_floor ? 'Yes' : 'No';
+            document.getElementById('pt-cp').textContent = playtestGame.checkpoint ? 'Saved' : 'None';
+        }
+
+        function playtestCanvasClick(e) {
+            if (!playtestGame || !playtestActive) return;
+            var canvas = document.getElementById('playtest-canvas');
+            var rect = canvas.getBoundingClientRect();
+            var sx = canvas.width / rect.width;
+            var sy = canvas.height / rect.height;
+            var mx = (e.clientX - rect.left) * sx;
+            var my = (e.clientY - rect.top) * sy;
+            var tx = Math.floor((mx + playtestGame.camera.x) / playtestGame.tile_size);
+            var ty = Math.floor((my + playtestGame.camera.y) / playtestGame.tile_size);
+            if (ty < 0 || ty >= playtestGame.current_map.data.length || tx < 0 || tx >= playtestGame.current_map.data[0].length) return;
+            var tile = playtestGame.get_tile(tx, ty);
+            if (tile && tile.solid) return;
+            playtestGame.player.loc.x = tx * playtestGame.tile_size;
+            playtestGame.player.loc.y = ty * playtestGame.tile_size;
+            playtestGame.player.vel.x = 0;
+            playtestGame.player.vel.y = 0;
+        }
+
+        function playtestSaveCheckpoint() {
+            if (!playtestGame || !playtestActive) return;
+            playtestGame.checkpoint = {
+                playerX: playtestGame.player.loc.x,
+                playerY: playtestGame.player.loc.y,
+                playerColour: playtestGame.player.colour,
+                doorStates: []
+            };
+            document.getElementById('pt-cp').textContent = 'Saved';
+            playtestGame.showMessage('Checkpoint saved!');
+        }
+
+        function playtestSetZoom(val) {
+            var pct = parseInt(val);
+            document.getElementById('pt-zoom-label').textContent = pct + '%';
+            document.getElementById('playtest-canvas').style.transform = 'scale(' + (pct / 100) + ')';
+        }
+
+        function playtestSetLock(checked) {
+            if (playtestGame) playtestGame.limit_viewport = checked;
+        }
+
+        document.getElementById('playtest-canvas').addEventListener('click', playtestCanvasClick);
+
         document.addEventListener('keydown', function(e) {
+            if (playtestActive) return;
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z' && !e.shiftKey) {
                     if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;

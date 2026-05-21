@@ -61,6 +61,7 @@ var Clarity = function () {
 
     this.dt = 1;
     this.checkpoint = null;
+    this.tasks = {};
 
     window.onkeydown = this.keydown.bind(this);
     window.onkeyup   = this.keyup.bind(this);
@@ -89,13 +90,20 @@ Clarity.prototype.keydown = function (e) {
 
     switch (e.keyCode) {
     case 37:
+    case 65:
         _this.key.left = true;
+        e.preventDefault();
         break;
     case 38:
+    case 87:
+    case 32:
         _this.key.up = true;
+        e.preventDefault();
         break;
     case 39:
+    case 68:
         _this.key.right = true;
+        e.preventDefault();
         break;
     }
 };
@@ -106,13 +114,20 @@ Clarity.prototype.keyup = function (e) {
 
     switch (e.keyCode) {
     case 37:
+    case 65:
         _this.key.left = false;
+        e.preventDefault();
         break;
     case 38:
+    case 87:
+    case 32:
         _this.key.up = false;
+        e.preventDefault();
         break;
     case 39:
+    case 68:
         _this.key.right = false;
+        e.preventDefault();
         break;
     }
 };
@@ -172,6 +187,8 @@ Clarity.prototype.load_map = function (map) {
         y: 0
     };
 
+    this.clearTasks();
+
     this.log('Successfully loaded map data.');
 
     return true;
@@ -183,14 +200,14 @@ Clarity.prototype.loadModularMap = function (index) {
         return;
     }
     if (index >= this.modularData.maps.length) {
-        alert("You completed all levels!");
+        this.showMessage("You completed all levels!");
         return;
     }
     if (index < 0) index = 0;
     this.modularIndex = index;
     var mapData = JSON.parse(JSON.stringify(this.modularData.maps[index]));
     if (!mapData.scripts) mapData.scripts = {};
-    mapData.scripts.next_level = 'this.checkpoint=null;if(this.modularData){if(this.modularIndex+1<this.modularData.maps.length){this.loadModularMap(this.modularIndex+1);}else{alert("All levels complete!");}}else{alert("You win!");this.load_map(this.source_map);}';
+    mapData.scripts.next_level = 'this.checkpoint=null;if(this.modularData){if(this.modularIndex+1<this.modularData.maps.length){this.loadModularMap(this.modularIndex+1);}else{this.showMessage("All levels complete!");}}else{this.showMessage("You win!");this.load_map(this.source_map);}';
     mapData.scripts.death = '';
     this.source_map = mapData;
     this.load_map(mapData);
@@ -481,7 +498,7 @@ Clarity.prototype.update = function () {
     this.update_player();
 };
 
-Clarity.prototype.showMessage = function (text) {
+Clarity.prototype.showMessage = function (text, duration) {
     var div = document.getElementById('game-message');
     if (!div) {
         div = document.createElement('div');
@@ -492,9 +509,47 @@ Clarity.prototype.showMessage = function (text) {
     div.textContent = text;
     div.style.opacity = '1';
     clearTimeout(div._timeout);
+    var ms = (duration || 1.5) * 1000;
     div._timeout = setTimeout(function () {
         div.style.opacity = '0';
-    }, 1500);
+    }, ms);
+};
+
+Clarity.prototype.clearTasks = function () {
+    var list = document.getElementById('task-list');
+    if (list) list.innerHTML = '';
+    this.tasks = {};
+};
+
+Clarity.prototype.addTask = function (taskId, message, type, duration) {
+    if (this.tasks[taskId]) return;
+    if (type === 'timeout') {
+        this.showMessage(message, duration || 5);
+        return;
+    }
+    var list = document.getElementById('task-list');
+    if (!list) {
+        list = document.createElement('div');
+        list.id = 'task-list';
+        list.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:9998;pointer-events:none;align-items:center;';
+        document.body.appendChild(list);
+    }
+    var el = document.createElement('div');
+    el.style.cssText = 'background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:4px;font:16px monospace;transition:opacity 0.5s;text-align:center;';
+    el.textContent = message;
+    list.appendChild(el);
+    this.tasks[taskId] = { id: taskId, message: message, element: el };
+};
+
+Clarity.prototype.completeTask = function (taskId) {
+    var task = this.tasks[taskId];
+    if (!task) return;
+    task.element.style.opacity = '0';
+    var self = this;
+    setTimeout(function () {
+        if (task.element.parentNode) task.element.parentNode.removeChild(task.element);
+        delete self.tasks[taskId];
+    }, 300);
 };
 
 Clarity.prototype.getDoorStates = function () {
@@ -524,7 +579,10 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
 };
 
 Clarity.prototype.handleDeath = function () {
-    alert("You died!");
+    this.key.left = false;
+    this.key.right = false;
+    this.key.up = false;
+    this.showMessage("You died!");
     if (this.checkpoint) {
         var cp = this.checkpoint;
         if (this.modularData) {

@@ -718,6 +718,20 @@
             setZoom(parseInt(this.value));
         });
 
+        function fitZoom() {
+            var gameArea = document.getElementById('game-area');
+            var padding = 12;
+            var availW = gameArea.clientWidth - padding * 2;
+            var availH = gameArea.clientHeight - padding * 2;
+            var scale = Math.min(availW / VP_W, availH / VP_H);
+            var maxZoom = 3;
+            var percent = Math.round(Math.min(Math.max(scale, 0.25), maxZoom) * 100);
+            zoomSlider.value = percent;
+            setZoom(percent);
+        }
+
+        window.addEventListener('resize', fitZoom);
+
         /* ---- Settings (localStorage) ---- */
 
         function loadSettings() {
@@ -821,6 +835,8 @@
                 if (page) page.classList.add('active');
             });
         });
+
+        fitZoom();
 
         /* ---- Game Loop ---- */
 
