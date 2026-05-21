@@ -62,6 +62,7 @@ var Clarity = function () {
     this.dt = 1;
     this.checkpoint = null;
     this.tasks = {};
+    this.oneTimeTriggered = {};
 
     window.onkeydown = this.keydown.bind(this);
     window.onkeyup   = this.keyup.bind(this);
@@ -204,6 +205,7 @@ Clarity.prototype.loadModularMap = function (index) {
         return;
     }
     if (index < 0) index = 0;
+    if (index !== this.modularIndex) this.oneTimeTriggered = {};
     this.modularIndex = index;
     var mapData = JSON.parse(JSON.stringify(this.modularData.maps[index]));
     if (!mapData.scripts) mapData.scripts = {};
@@ -521,8 +523,13 @@ Clarity.prototype.clearTasks = function () {
     this.tasks = {};
 };
 
-Clarity.prototype.addTask = function (taskId, message, type, duration) {
+Clarity.prototype.addTask = function (taskId, message, type, duration, oneTimeOnly) {
     if (this.tasks[taskId]) return;
+    if (oneTimeOnly) {
+        if (!this.oneTimeTriggered) this.oneTimeTriggered = {};
+        if (this.oneTimeTriggered['task_' + taskId]) return;
+        this.oneTimeTriggered['task_' + taskId] = true;
+    }
     if (type === 'timeout') {
         this.showMessage(message, duration || 5);
         return;
@@ -566,6 +573,13 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
     var cpTile = this.current_map.keys.find(function (k) { return k.id === tileId; });
     if (!cpTile) return;
 
+    if (!this.oneTimeTriggered) this.oneTimeTriggered = {};
+
+    var tileX = Math.round(this.player.loc.x / this.tile_size);
+    var tileY = Math.round(this.player.loc.y / this.tile_size);
+    var triggerKey = 'cp_' + tileId + '_' + tileX + '_' + tileY;
+    var isNewLocation = !this.oneTimeTriggered[triggerKey];
+
     this.checkpoint = {
         playerX: this.player.loc.x,
         playerY: this.player.loc.y,
@@ -574,7 +588,20 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
     };
 
     if (cpTile.respawnMessage) {
-        this.showMessage(cpTile.respawnMessage);
+        if (!cpTile.oneTimeOnly || isNewLocation) {
+            this.showMessage(cpTile.respawnMessage);
+        }
+    }
+
+    if (cpTile.oneTimeOnly && isNewLocation) {
+        this.oneTimeTriggered[triggerKey] = true;
+
+        if (cpTile.extraCommand && cpTile.extraTargetId) {
+            var targetTile = this.current_map.keys.find(function (k) { return k.id === cpTile.extraTargetId; });
+            if (targetTile) {
+                targetTile.colour = cpTile.extraTargetColour || targetTile.colour;
+            }
+        }
     }
 };
 

@@ -585,6 +585,7 @@
             game.modularData = null;
             game.source_map = JSON.parse(JSON.stringify(data));
             game.checkpoint = null;
+            game.oneTimeTriggered = {};
             game.load_map(data);
             game.limit_viewport = document.getElementById('viewport').checked;
         }
@@ -593,6 +594,7 @@
             game.modularData = JSON.parse(JSON.stringify(data));
             game.modularIndex = 0;
             game.checkpoint = null;
+            game.oneTimeTriggered = {};
             game.loadModularMap(0);
         }
 

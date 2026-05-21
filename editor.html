@@ -743,12 +743,20 @@
                     <label><input type="checkbox" id="custom-is-death"> Is Death (kill player, auto non-solid)</label>
                 </div>
                 <div class="prop-row">
-                    <label><input type="checkbox" id="custom-is-checkpoint" onchange="document.getElementById('checkpoint-msg-row').style.display=this.checked?'':'none'"> Is Checkpoint</label>
+                    <label><input type="checkbox" id="custom-is-checkpoint" onchange="toggleCpFields()"> Is Checkpoint</label>
                     <label><input type="checkbox" id="custom-save-door-states" checked> Save Door States</label>
                 </div>
                 <div class="prop-row" id="checkpoint-msg-row" style="display:none">
                     <label><input type="checkbox" id="custom-respawn-enabled"> Respawn Message</label>
                     <label>Text: <input type="text" id="custom-respawn-msg" value="Checkpoint saved!" style="width:180px"></label>
+                </div>
+                <div class="prop-row" id="checkpoint-once-row" style="display:none">
+                    <label><input type="checkbox" id="custom-cp-once" checked onchange="toggleCpOnceFields()"> One-time only</label>
+                </div>
+                <div class="prop-row" id="cp-extra-row" style="display:none">
+                    <label><input type="checkbox" id="custom-cp-extra"> Extra: change colour</label>
+                    <label>of ID: <input type="number" id="custom-cp-extra-id" style="width:48px"></label>
+                    <label>to: <input type="color" id="custom-cp-extra-colour"></label>
                 </div>
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-has-task" onchange="toggleTaskFields()"> Has Task</label>
@@ -765,6 +773,9 @@
                 </div>
                 <div class="prop-row" id="task-duration-row" style="display:none">
                     <label>Duration: <input type="number" id="custom-task-duration" value="5" min="1" max="60" style="width:52px"> seconds</label>
+                </div>
+                <div class="prop-row" id="task-once-row" style="display:none">
+                    <label><input type="checkbox" id="custom-task-once" checked> One-time only</label>
                 </div>
                 <div class="prop-row">
                     <label>Completes Task ID: <input type="number" id="custom-completes-task-id" value="0" min="0" style="width:52px"></label>
@@ -826,7 +837,7 @@
         var TILE = 28;
         var painting = false;
         var pickingSpawn = false;
-        var defaultTileNames = ['air', 'floor', 'brick', 'water', 'platform', 'bounce', 'wall', 'shift', 'goal', 'lava', 'block', 'key'];
+        var defaultTileNames = ['air', 'floor', 'brick', 'water', 'platform', 'bounce', 'wall', 'shift', 'goal', 'lava', 'block', 'key', 'checkpoint'];
         var undoStack = [];
         var undoIndex = -1;
         var undoMax = 100;
@@ -937,16 +948,24 @@
             document.getElementById('custom-save-door-states').checked = true;
             document.getElementById('custom-respawn-enabled').checked = false;
             document.getElementById('custom-respawn-msg').value = 'Checkpoint saved!';
+            document.getElementById('custom-cp-once').checked = true;
+            document.getElementById('custom-cp-extra').checked = false;
+            document.getElementById('custom-cp-extra-id').value = '';
+            document.getElementById('custom-cp-extra-colour').value = '#FFFFFF';
             document.getElementById('checkpoint-msg-row').style.display = 'none';
+            document.getElementById('checkpoint-once-row').style.display = 'none';
+            document.getElementById('cp-extra-row').style.display = 'none';
             document.getElementById('custom-has-task').checked = false;
             document.getElementById('custom-task-id').value = '1';
             document.getElementById('custom-task-type').value = 'persistent';
             document.getElementById('custom-task-msg').value = '';
             document.getElementById('custom-task-duration').value = '5';
             document.getElementById('custom-completes-task-id').value = '0';
+            document.getElementById('custom-task-once').checked = true;
             document.getElementById('task-type-row').style.display = 'none';
             document.getElementById('task-msg-row').style.display = 'none';
             document.getElementById('task-duration-row').style.display = 'none';
+            document.getElementById('task-once-row').style.display = 'none';
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -984,17 +1003,25 @@
             document.getElementById('custom-save-door-states').checked = key.saveDoorStates !== false;
             document.getElementById('custom-respawn-enabled').checked = !!key.respawnMessage;
             document.getElementById('custom-respawn-msg').value = key.respawnMessage || 'Checkpoint saved!';
+            document.getElementById('custom-cp-once').checked = key.oneTimeOnly !== false;
+            document.getElementById('custom-cp-extra').checked = !!key.extraCommand;
+            document.getElementById('custom-cp-extra-id').value = key.extraTargetId || key.id || '';
+            document.getElementById('custom-cp-extra-colour').value = key.extraTargetColour || key.colour || '#FFFFFF';
             document.getElementById('checkpoint-msg-row').style.display = key.isCheckpoint ? '' : 'none';
+            document.getElementById('checkpoint-once-row').style.display = key.isCheckpoint ? '' : 'none';
+            document.getElementById('cp-extra-row').style.display = key.isCheckpoint && key.oneTimeOnly !== false ? '' : 'none';
             document.getElementById('custom-has-task').checked = !!key.isTask;
             document.getElementById('custom-task-id').value = key.taskId || '1';
             document.getElementById('custom-task-type').value = key.taskType || 'persistent';
             document.getElementById('custom-task-msg').value = key.taskMessage || '';
             document.getElementById('custom-task-duration').value = key.taskDuration || '5';
+            document.getElementById('custom-task-once').checked = key.taskOneTime !== false;
             document.getElementById('custom-completes-task-id').value = key.completesTaskId || '0';
             document.getElementById('task-type-row').style.display = key.isTask ? '' : 'none';
             document.getElementById('task-msg-row').style.display = key.isTask ? '' : 'none';
             var isTimed = key.isTask && (key.taskType === 'timeout');
             document.getElementById('task-duration-row').style.display = isTimed ? '' : 'none';
+            document.getElementById('task-once-row').style.display = key.isTask ? '' : 'none';
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -1137,11 +1164,25 @@
                 } else {
                     delete key.respawnMessage;
                 }
+                key.oneTimeOnly = document.getElementById('custom-cp-once').checked ? true : false;
+                if (document.getElementById('custom-cp-extra').checked) {
+                    key.extraCommand = true;
+                    key.extraTargetId = parseInt(document.getElementById('custom-cp-extra-id').value) || key.id;
+                    key.extraTargetColour = document.getElementById('custom-cp-extra-colour').value || key.colour;
+                } else {
+                    delete key.extraCommand;
+                    delete key.extraTargetId;
+                    delete key.extraTargetColour;
+                }
                 scriptParts.push('this.activateCheckpoint(' + key.id + ');');
             } else {
                 delete key.isCheckpoint;
                 delete key.saveDoorStates;
                 delete key.respawnMessage;
+                delete key.oneTimeOnly;
+                delete key.extraCommand;
+                delete key.extraTargetId;
+                delete key.extraTargetColour;
             }
 
             // Task
@@ -1150,19 +1191,22 @@
             delete key.taskMessage;
             delete key.taskId;
             delete key.taskDuration;
+            delete key.taskOneTime;
             delete key.completesTaskId;
             if (hasTask) {
                 var taskId = parseInt(document.getElementById('custom-task-id').value) || key.id;
                 var taskType = document.getElementById('custom-task-type').value;
                 var taskMessage = document.getElementById('custom-task-msg').value.trim();
                 var taskDuration = parseFloat(document.getElementById('custom-task-duration').value) || 5;
+                var taskOnce = document.getElementById('custom-task-once').checked;
                 key.isTask = true;
                 key.taskId = taskId;
                 key.taskType = taskType;
                 key.taskMessage = taskMessage || ('Task ' + taskId);
+                key.taskOneTime = taskOnce;
                 if (taskType === 'timeout') key.taskDuration = taskDuration;
                 var escapedMsg = (key.taskMessage || '').replace(/"/g, '\\"');
-                scriptParts.push('this.addTask(' + taskId + ',"' + escapedMsg + '","' + taskType + '",' + (taskDuration || 5) + ');');
+                scriptParts.push('this.addTask(' + taskId + ',"' + escapedMsg + '","' + taskType + '",' + (taskDuration || 5) + ',' + taskOnce + ');');
             }
             if (completesTaskId > 0) {
                 key.completesTaskId = completesTaskId;
@@ -1316,7 +1360,8 @@
                 {id: 8, colour: '#FADF73', solid: 0, script: 'next_level'},
                 {id: 9, colour: '#C93232', solid: 0, script: 'death'},
                 {id: 10, colour: '#555', solid: 1},
-                {id: 11, colour: '#0FF', solid: 0, script: 'unlock'}
+                {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
+                {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'}
             ];
             var cols = 20, rows = 15;
             var data = [];
@@ -1341,7 +1386,8 @@
                     change_colour: "this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);",
                     next_level: "alert(\"You win!\");this.load_map(this.source_map);",
                     death: "alert(\"You died!\");this.load_map(this.source_map);",
-                    unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";"
+                    unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";",
+                    combined_12: "this.activateCheckpoint(12);"
                 }
             };
             modularWorld.maps.push(newMap);
@@ -1398,6 +1444,19 @@
             document.getElementById('task-msg-row').style.display = hasTask ? '' : 'none';
             var isTimed = hasTask && document.getElementById('custom-task-type').value === 'timeout';
             document.getElementById('task-duration-row').style.display = isTimed ? '' : 'none';
+            document.getElementById('task-once-row').style.display = hasTask ? '' : 'none';
+        }
+
+        function toggleCpFields() {
+            var hasCp = document.getElementById('custom-is-checkpoint').checked;
+            document.getElementById('checkpoint-msg-row').style.display = hasCp ? '' : 'none';
+            document.getElementById('checkpoint-once-row').style.display = hasCp ? '' : 'none';
+            if (hasCp) toggleCpOnceFields();
+        }
+
+        function toggleCpOnceFields() {
+            var showExtra = document.getElementById('custom-cp-once').checked;
+            document.getElementById('cp-extra-row').style.display = showExtra ? '' : 'none';
         }
 
         function toggleSidePanel() {
@@ -1439,7 +1498,8 @@
                 {id: 8, colour: '#FADF73', solid: 0, script: 'next_level'},
                 {id: 9, colour: '#C93232', solid: 0, script: 'death'},
                 {id: 10, colour: '#555', solid: 1},
-                {id: 11, colour: '#0FF', solid: 0, script: 'unlock'}
+                {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
+                {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'}
             ];
             var data = [];
             for (var y = 0; y < rows; y++) {
@@ -1467,7 +1527,8 @@
                     change_colour: "this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);",
                     next_level: "alert(\"You win!\");this.load_map(this.source_map);",
                     death: "alert(\"You died!\");this.load_map(this.source_map);",
-                    unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";"
+                    unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";",
+                    combined_12: "this.activateCheckpoint(12);"
                 }
             };
             if (adding) {
