@@ -1159,6 +1159,8 @@
 
         /* ---- Game Loop ---- */
 
+        var FIXED_STEP = 1000 / 60;
+        var accumulator = 0;
         var lastTime = performance.now();
         var frameCount = 0;
         var fpsTime = 0;
@@ -1166,10 +1168,15 @@
 
         var Loop = function() {
             var now = performance.now();
-            var elapsed = now - lastTime;
-            game.dt = Math.min(elapsed / (1000 / 60), 3);
-            if (elapsed > 200) game.dt = 1;
+            var frameTime = Math.min(now - lastTime, 200);
             lastTime = now;
+            accumulator += frameTime;
+
+            while (accumulator >= FIXED_STEP) {
+                game.dt = 1;
+                game.update();
+                accumulator -= FIXED_STEP;
+            }
 
             ctx.save();
             ctx.scale(dpr, dpr);
@@ -1178,7 +1185,6 @@
             ctx.fillRect(0, 0, VP_W, VP_H);
 
             if (game.current_map) {
-                game.update();
                 game.draw(ctx);
             }
 
@@ -1194,7 +1200,7 @@
             window.requestAnimFrame(Loop);
 
             frameCount++;
-            fpsTime += elapsed;
+            fpsTime += frameTime;
             if (fpsTime >= 1000) {
                 fpsDisplay = frameCount;
                 frameCount = 0;

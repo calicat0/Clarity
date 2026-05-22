@@ -2499,20 +2499,25 @@
 
             document.getElementById('playtest-overlay').classList.add('open');
 
+            var ptAccumulator = 0;
+            var ptFixedStep = 1000 / 60;
             var last = performance.now();
             function tick(now) {
                 if (!playtestActive) return;
-                var elapsed = now - last;
-                playtestGame.dt = Math.min(elapsed / (1000 / 60), 3);
-                if (elapsed > 200) playtestGame.dt = 1;
+                var frameTime = Math.min(now - last, 200);
                 last = now;
+                ptAccumulator += frameTime;
+                while (ptAccumulator >= ptFixedStep) {
+                    playtestGame.dt = 1;
+                    playtestGame.update();
+                    ptAccumulator -= ptFixedStep;
+                }
                 var ctx = canvas.getContext('2d');
                 ctx.save();
                 ctx.scale(dpr, dpr);
                 ctx.fillStyle = playtestGame.current_map ? playtestGame.current_map.background : '#1a1a1a';
                 ctx.fillRect(0, 0, ptVW, ptVH);
                 if (playtestGame.current_map) {
-                    playtestGame.update();
                     playtestGame.draw(ctx);
                 }
                 ctx.restore();
