@@ -57,10 +57,6 @@
             background: #555;
             margin: 0 4px;
         }
-        #toolbar input[name="mapname"] {
-            width: 180px;
-        }
-
         #palette-section {
             border: 1px solid #444;
             padding: 6px;
@@ -97,6 +93,9 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+        }
+        .section-body.closed {
+            display: none !important;
         }
         .tile-editor {
             display: flex;
@@ -236,10 +235,6 @@
         .section-body {
             padding: 4px 0 4px 4px;
         }
-        .section-body.closed {
-            display: none;
-        }
-
         /* Map props */
         .prop-row {
             display: flex;
@@ -595,6 +590,138 @@
         #playtest-side button:hover {
             background: #333;
         }
+        /* File Settings Modal */
+        #file-settings-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 250;
+            align-items: center;
+            justify-content: center;
+        }
+        #file-settings-overlay.open { display: flex; }
+        #file-settings-box {
+            position: relative;
+            background: #222;
+            border: 2px solid #555;
+            border-radius: 4px;
+            padding: 20px 24px;
+            width: 580px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+        #file-settings-box h2 { margin: 0 0 12px 0; font-size: 16px; color: #fff; }
+        .fs-close {
+            position: absolute; top: 6px; right: 8px;
+            cursor: pointer; background: #111; border: 1px solid #555;
+            color: #ddd; font-size: 14px; line-height: 1; padding: 2px 8px;
+            z-index: 10; font-family: monospace;
+        }
+        .fs-close:hover { color: #fff; background: #333; }
+        .fs-world-input { width: 100%; padding: 4px 6px; font-size: 13px; margin-bottom: 10px; }
+        .fs-section-title {
+            font-weight: bold; font-size: 13px; color: #aaa;
+            margin: 0 0 6px 0; padding-bottom: 4px; border-bottom: 1px solid #333;
+        }
+        #fs-map-list {
+            max-height: 300px; overflow-y: auto; margin-bottom: 10px;
+            border: 1px solid #333; border-radius: 3px; background: #1a1a1a;
+        }
+        .fs-map-row {
+            display: flex; align-items: center; gap: 4px;
+            padding: 4px 6px; border-bottom: 1px solid #2a2a2a;
+            transition: background 0.15s;
+        }
+        .fs-map-row:last-child { border-bottom: none; }
+        .fs-map-row:hover { background: #2a2a2a; }
+        .fs-map-row.fs-current { background: #1e2a1e; }
+        .fs-map-row.fs-dragging { opacity: 0.4; }
+        .fs-map-row.fs-drag-over { border-top: 2px solid #888; }
+        .fs-drag-handle {
+            cursor: grab; color: #555; font-size: 16px; line-height: 1;
+            padding: 0 4px; user-select: none; flex-shrink: 0;
+        }
+        .fs-drag-handle:active { cursor: grabbing; }
+        .fs-level-label {
+            font-size: 11px; color: #888; min-width: 80px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .fs-map-name { flex: 1; min-width: 0; padding: 2px 4px; font-size: 12px; }
+        .fs-map-row button { font-size: 11px; padding: 2px 6px; cursor: pointer; flex-shrink: 0; }
+        .fs-map-row button:disabled { opacity: 0.35; cursor: default; }
+        .fs-map-row button:hover:not(:disabled) { background: #444; }
+        .fs-btn.fs-export { background: #1a3a1a; border-color: #3a6a3a; }
+        .fs-btn.fs-export:hover:not(:disabled) { background: #2a5a2a; }
+        .fs-btn.fs-delete { background: #3a1a1a; border-color: #6a3a3a; }
+        .fs-btn.fs-delete:hover:not(:disabled) { background: #5a2a2a; }
+        .fs-actions { display: flex; gap: 6px; margin-top: 4px; }
+        .fs-actions button { flex: 1; padding: 6px 8px; font-size: 12px; cursor: pointer; }
+        .fs-actions button:hover { background: #444; }
+        #fs-import-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        #fs-import-header h3 { margin: 0; font-size: 16px; color: #fff; }
+        #fs-import-header button { font-size: 12px; padding: 4px 10px; cursor: pointer; }
+        #fs-import-input { width: 100%; margin-bottom: 12px; }
+        .fs-import-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 12px; border: 1px solid #333; border-radius: 3px;
+            margin-bottom: 4px; cursor: pointer; transition: background 0.15s;
+        }
+        .fs-import-item:hover { background: #2a2a2a; border-color: #555; }
+        .fs-import-name { font-size: 13px; color: #ddd; }
+        .fs-import-arrow { font-size: 14px; color: #666; }
+        #modal-overlay, #custom-modal-overlay { z-index: 260; }
+
+        /* Tasks panel */
+        .task-row {
+            border: 1px solid #333; border-radius: 3px; padding: 4px 6px;
+            margin-bottom: 4px; background: #1a1a1a;
+        }
+        .task-row .task-header {
+            display: flex; align-items: center; gap: 4px; margin-bottom: 3px;
+        }
+        .task-tile-badge {
+            display: inline-block; width: 20px; height: 20px; border-radius: 2px;
+            text-align: center; line-height: 20px; font-size: 10px; font-weight: bold;
+            color: #fff; text-shadow: 0 0 3px #000; flex-shrink: 0;
+            overflow: hidden;
+        }
+        .task-name {
+            font-size: 11px; color: #aaa; flex: 1;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .task-id-label { font-size: 10px; color: #666; flex-shrink: 0; }
+        .task-fields {
+            display: flex; flex-wrap: wrap; gap: 3px 6px; align-items: center;
+        }
+        .task-fields label {
+            font-size: 10px; color: #888;
+            display: inline-flex; align-items: center; gap: 2px; white-space: nowrap;
+        }
+        .task-fields select,
+        .task-fields input[type="text"],
+        .task-fields input[type="number"] {
+            font-size: 10px; padding: 1px 3px; background: #111;
+            color: #ddd; border: 1px solid #444;
+        }
+        .task-fields select { width: 76px; }
+        .task-fields input[type="text"] { width: 90px; }
+        .task-fields input[type="number"] { width: 36px; }
+        .task-fields input[type="checkbox"] {
+            margin: 0; -webkit-appearance: none; appearance: none;
+            width: 12px; height: 12px; border: 1px solid #555;
+            background: #111; cursor: pointer; position: relative;
+        }
+        .task-fields input[type="checkbox"]:checked { background: #555; border-color: #888; }
+        .task-fields input[type="checkbox"]:checked::after {
+            content: '✓'; position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; line-height: 1; color: #ddd;
+        }
+        .task-completer .task-fields label { font-size: 10px; }
+        .task-arrow { color: #555; font-size: 11px; margin: 0 2px; }
     </style>
 </head>
 
@@ -607,19 +734,7 @@
         <button onclick="loadFile()">Load Map</button>
         <button onclick="saveMap()">Save As...</button>
         <span class="sep"></span>
-        <label>Name:</label>
-        <input type="text" name="mapname" onchange="mapData.name=this.value;pushHistory()" placeholder="Level name">
-        <span class="sep"></span>
-        <span id="modular-controls" style="display:none">
-            <span style="color:#888;font-size:11px;">Maps:</span>
-            <span id="map-tabs"></span>
-            <button onclick="showAddMapDialog()" title="Add a new map to this world">+Map</button>
-            <button onclick="removeMap()" title="Remove current map from this world">-Map</button>
-            <button onclick="moveMap(-1)" title="Move current map left">◀</button>
-            <button onclick="moveMap(1)" title="Move current map right">▶</button>
-            <span style="margin-left:8px;color:#888;font-size:11px;">World:</span>
-            <input type="text" id="world-name" style="width:120px" placeholder="World name" onchange="if(modularWorld)modularWorld.name=this.value">
-        </span>
+        <button onclick="showFileSettings()">World/Map/File settings</button>
         <span class="sep"></span>
         <button id="eraser-btn" onclick="toggleEraser()">Eraser</button>
         <button id="xray-btn" onclick="toggleXray()">X-Ray</button>
@@ -649,12 +764,12 @@
             <button id="side-close" onclick="toggleSidePanel()">✕</button>
             <div id="side-content">
                 <div class="side-section">
-                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▾</span> Map Settings</div>
-                    <div class="section-body" id="props-panel"></div>
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Map Settings</div>
+                    <div class="section-body closed" id="props-panel"></div>
                 </div>
                 <div class="side-section">
-                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▾</span> Grid</div>
-                    <div class="section-body">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Grid</div>
+                    <div class="section-body closed">
                         <div id="grid-controls">
                             <button onclick="addRow()">+Row</button>
                             <button onclick="delRow()">-Row</button>
@@ -667,18 +782,22 @@
                     </div>
                 </div>
                 <div class="side-section">
-                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▾</span> Scripts</div>
-                    <div class="section-body" id="scripts-editor"></div>
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Scripts</div>
+                    <div class="section-body closed" id="scripts-editor"></div>
                 </div>
                 <div class="side-section">
-                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▾</span> Tile Properties</div>
-                    <div class="section-body" id="palette-editor"></div>
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Tile/Block Properties</div>
+                    <div class="section-body closed" id="palette-editor"></div>
                 </div>
                 <div class="side-section">
-                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Presets</div>
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Preset Themes</div>
                     <div class="section-body closed">
                         <div class="presets-body" id="presets-content"></div>
                     </div>
+                </div>
+                <div class="side-section">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Tasks</div>
+                    <div class="section-body closed" id="tasks-panel"></div>
                 </div>
             </div>
         </div>
@@ -784,6 +903,31 @@
             <div style="margin-top:10px;display:flex;gap:6px;">
                 <button onclick="confirmCustomBlock()" id="custom-modal-confirm">Add Tile</button>
                 <button onclick="hideCustomDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="file-settings-overlay">
+        <div id="file-settings-box">
+            <button class="fs-close" onclick="hideFileSettings()">✕</button>
+            <h2>File Settings</h2>
+            <div id="fs-main-view">
+                <input type="text" id="fs-world-name" class="fs-world-input" placeholder="World name">
+                <div class="fs-section-title">Maps</div>
+                <div id="fs-map-list"></div>
+                <div class="fs-actions">
+                    <button onclick="showAddMapDialog()">+ New Map</button>
+                    <button onclick="showImportDialog()">Import Level</button>
+                    <button onclick="exportWorld()">Export All</button>
+                </div>
+            </div>
+            <div id="fs-import-view" style="display:none">
+                <div id="fs-import-header">
+                    <button onclick="showImportBack()">← Back</button>
+                    <h3>Import Level</h3>
+                </div>
+                <input type="file" id="fs-import-input" accept=".js" onchange="handleImportFile(this.files[0])">
+                <div id="fs-import-list" style="font-size:12px;color:#666;">Select a .js file above to import a level from.</div>
             </div>
         </div>
     </div>
@@ -921,6 +1065,12 @@
             return Math.max.apply(null, ids) + 1;
         }
 
+        function getNextTaskId() {
+            if (!mapData || !mapData.keys) return 1;
+            var ids = mapData.keys.filter(function(k) { return k.isTask && k.taskId; }).map(function(k) { return k.taskId; });
+            return ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
+        }
+
         function showAddCustomDialog() {
             document.getElementById('custom-edit-id').value = '';
             document.getElementById('custom-modal-title').textContent = 'Add Custom Block';
@@ -956,7 +1106,7 @@
             document.getElementById('checkpoint-once-row').style.display = 'none';
             document.getElementById('cp-extra-row').style.display = 'none';
             document.getElementById('custom-has-task').checked = false;
-            document.getElementById('custom-task-id').value = '1';
+            document.getElementById('custom-task-id').value = getNextTaskId();
             document.getElementById('custom-task-type').value = 'persistent';
             document.getElementById('custom-task-msg').value = '';
             document.getElementById('custom-task-duration').value = '5';
@@ -1271,7 +1421,6 @@
                 eraserOn = false;
                 document.getElementById('eraser-btn').classList.remove('active');
             }
-            document.querySelector('[name="mapname"]').value = data.name || '';
             document.getElementById('status').textContent = 'Loaded: ' + (data.name || 'unnamed')
                 + ' | ' + data.data[0].length + 'x' + data.data.length + ' | ' + data.keys.length + ' tiles';
             renderPaletteTiles();
@@ -1280,6 +1429,7 @@
             renderGrid();
             renderScripts();
             renderPresets();
+            renderTasks();
             renderModularTabs();
             if (!skipHistory) pushHistory();
         }
@@ -1291,8 +1441,6 @@
                 return;
             }
             currentMapIndex = 0;
-            var wn = document.getElementById('world-name');
-            if (wn) wn.value = modularWorld.name || '';
             loadMapData(modularWorld.maps[0]);
             renderModularTabs();
         }
@@ -1324,17 +1472,12 @@
                     var name = prompt('Rename "' + (m.name || 'Level ' + (i + 1)) + '":', m.name || 'Level ' + (i + 1));
                     if (name && name.trim()) {
                         modularWorld.maps[i].name = name.trim();
-                        if (i === currentMapIndex) {
-                            mapData.name = name.trim();
-                            document.querySelector('[name="mapname"]').value = name.trim();
-                        }
+                        if (i === currentMapIndex) mapData.name = name.trim();
                         renderModularTabs();
                     }
                 };
                 tabs.appendChild(btn);
             });
-            var wn = document.getElementById('world-name');
-            if (wn) wn.value = modularWorld.name || '';
         }
 
         function switchMap(index) {
@@ -1473,6 +1616,7 @@
             document.getElementById('modal-overlay').classList.add('open');
         }
         function showAddMapDialog() {
+            hideFileSettings();
             _addMapMode = true;
             document.getElementById('modal-box').querySelector('h2').textContent = 'Add Map to World';
             document.getElementById('modal-close').textContent = 'Cancel';
@@ -1686,6 +1830,100 @@
                 btn.onclick = function() { applyPreset(name); };
                 div.appendChild(btn);
             });
+        }
+
+        function renderTasks() {
+            var div = document.getElementById('tasks-panel');
+            if (!mapData || !mapData.keys) { div.innerHTML = ''; return; }
+            var taskTiles = mapData.keys.filter(function(k) { return k.isTask; });
+            var completeTiles = mapData.keys.filter(function(k) { return k.completesTaskId > 0; });
+            if (taskTiles.length === 0 && completeTiles.length === 0) {
+                div.innerHTML = '<em style="font-size:11px;color:#555;">No task tiles</em>';
+                return;
+            }
+            var html = '';
+            taskTiles.forEach(function(k) {
+                var escMsg = (k.taskMessage || '').replace(/"/g,'&quot;');
+                html += '<div class="task-row">'
+                    + '<div class="task-header">'
+                    + '<span class="task-tile-badge" style="background:' + (k.colour || '#555') + '">' + k.id + '</span>'
+                    + '<span class="task-name">' + (k.name || 'Tile ' + k.id) + '</span>'
+                    + '<span style="display:flex;align-items:center;gap:2px;">'
+                    + '<span style="font-size:10px;color:#666;">#</span>'
+                    + '<input type="number" value="' + (k.taskId || k.id) + '" onchange="updateTaskProp(' + k.id + ',\'taskId\',Math.max(1,parseInt(this.value)||1))" style="width:28px;font-size:10px;padding:1px 2px;background:#111;color:#ddd;border:1px solid #444;">'
+                    + '<button onclick="showEditCustomDialog(' + k.id + ')" style="font-size:10px;padding:1px 5px;cursor:pointer;background:#111;border:1px solid #555;color:#ddd;line-height:1;" title="Edit all block properties">✎</button>'
+                    + '</span>'
+                    + '</div>'
+                    + '<div class="task-fields">'
+                    + '<label>Type: <select onchange="updateTaskProp(' + k.id + ',\'taskType\',this.value)">'
+                    + '<option value="persistent"' + (k.taskType === 'persistent' ? ' selected' : '') + '>Persistent</option>'
+                    + '<option value="timeout"' + (k.taskType === 'timeout' ? ' selected' : '') + '>Timed</option>'
+                    + '</select></label>'
+                    + '<label>Msg: <input type="text" value="' + escMsg + '" onchange="updateTaskProp(' + k.id + ',\'taskMessage\',this.value)"></label>'
+                    + (k.taskType === 'timeout' ? '<label>Dur: <input type="number" step="0.5" value="' + (k.taskDuration || 5) + '" onchange="updateTaskProp(' + k.id + ',\'taskDuration\',parseFloat(this.value)||5)">s</label>' : '')
+                    + '<label title="One-time only"><input type="checkbox"' + (k.taskOneTime !== false ? ' checked' : '') + ' onchange="updateTaskProp(' + k.id + ',\'taskOneTime\',this.checked)"> 1x</label>'
+                    + '</div></div>';
+            });
+            completeTiles.forEach(function(k) {
+                html += '<div class="task-row task-completer">'
+                    + '<div class="task-header">'
+                    + '<span class="task-tile-badge" style="background:' + (k.colour || '#555') + '">' + k.id + '</span>'
+                    + '<span class="task-name">' + (k.name || 'Tile ' + k.id) + '</span>'
+                    + '<span class="task-arrow">→</span>'
+                    + '<span style="font-size:10px;color:#888;">Completes Task #</span>'
+                    + '<input type="number" value="' + (k.completesTaskId || 0) + '" onchange="updateTaskProp(' + k.id + ',\'completesTaskId\',Math.max(0,parseInt(this.value)||0))" style="width:32px;font-size:10px;padding:1px 2px;background:#111;color:#ddd;border:1px solid #444;">'
+                    + '</div></div>';
+            });
+            div.innerHTML = html;
+        }
+
+        function updateTaskProp(id, prop, val) {
+            var key = mapData.keys.find(function(k) { return k.id === id; });
+            if (!key) return;
+            key[prop] = val;
+            var scriptName = key.script;
+            var rebuildTask = function(k) {
+                if (!mapData.scripts) mapData.scripts = {};
+                var oldName = k.script;
+                if (oldName && oldName !== ('combined_' + k.id) && !oldName.startsWith('combined_')) return;
+                if (oldName && mapData.scripts[oldName]) {
+                    var s = mapData.scripts[oldName];
+                    s = s.replace(/this\.addTask\([^)]+\)\s*/g, '');
+                    s = s.replace(/this\.completeTask\([^)]+\)\s*/g, '');
+                    var parts = [];
+                    if (k.isTask) {
+                        var tid = k.taskId || k.id;
+                        var ttype = k.taskType || 'persistent';
+                        var tmsg = (k.taskMessage || 'Task ' + tid).replace(/"/g, '\\"');
+                        var tdur = k.taskDuration || 5;
+                        var tonce = k.taskOneTime !== false;
+                        parts.push('this.addTask(' + tid + ',"' + tmsg + '","' + ttype + '",' + tdur + ',' + tonce + ');');
+                    }
+                    if (k.completesTaskId > 0) parts.push('this.completeTask(' + k.completesTaskId + ');');
+                    mapData.scripts[oldName] = (s.trim() + ' ' + parts.join(' ')).trim();
+                } else {
+                    var parts = [];
+                    if (k.isTask) {
+                        var tid = k.taskId || k.id;
+                        var ttype = k.taskType || 'persistent';
+                        var tmsg = (k.taskMessage || 'Task ' + tid).replace(/"/g, '\\"');
+                        var tdur = k.taskDuration || 5;
+                        var tonce = k.taskOneTime !== false;
+                        parts.push('this.addTask(' + tid + ',"' + tmsg + '","' + ttype + '",' + tdur + ',' + tonce + ');');
+                    }
+                    if (k.completesTaskId > 0) parts.push('this.completeTask(' + k.completesTaskId + ');');
+                    if (parts.length > 0) {
+                        var n = 'combined_' + k.id;
+                        mapData.scripts[n] = parts.join(' ');
+                        k.script = n;
+                    }
+                }
+            };
+            rebuildTask(key);
+            renderTasks();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            pushHistory();
         }
 
         function renderScripts() {
@@ -1934,11 +2172,10 @@
 
         function saveMap() {
             if (!mapData) return;
-            if (document.querySelector('[name="mapname"]').value) {
-                mapData.name = document.querySelector('[name="mapname"]').value;
-            }
             modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
-            var name = document.getElementById('world-name').value.trim() || modularWorld.name || mapData.name || 'world';
+            var wnInput = document.getElementById('fs-world-name');
+            var worldName = wnInput ? wnInput.value.trim() : '';
+            var name = worldName || modularWorld.name || mapData.name || 'world';
             modularWorld.name = name;
             var content = 'loadModularData(' + serialize(modularWorld) + ');\n';
             var blob = new Blob([content], { type: 'application/javascript' });
@@ -1952,6 +2189,263 @@
             URL.revokeObjectURL(url);
             document.getElementById('status').textContent = 'Saved world as ' + a.download;
         }
+        /* ---- File Settings ---- */
+        function showFileSettings() {
+            if (!mapData || !modularWorld) return;
+            modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+            document.getElementById('file-settings-overlay').classList.add('open');
+            renderFileSettings();
+        }
+
+        function hideFileSettings() {
+            document.getElementById('file-settings-overlay').classList.remove('open');
+            document.getElementById('fs-main-view').style.display = '';
+            document.getElementById('fs-import-view').style.display = 'none';
+            if (modularWorld && modularWorld.maps[currentMapIndex]) {
+                loadMapData(modularWorld.maps[currentMapIndex]);
+                renderModularTabs();
+            }
+        }
+
+        function renderFileSettings() {
+            if (!modularWorld) return;
+            var wnInput = document.getElementById('fs-world-name');
+            wnInput.value = modularWorld.name || '';
+            wnInput.onchange = function() {
+                modularWorld.name = this.value;
+            };
+
+            var list = document.getElementById('fs-map-list');
+            list.innerHTML = '';
+            modularWorld.maps.forEach(function(m, i) {
+                var row = document.createElement('div');
+                row.className = 'fs-map-row';
+                row.draggable = true;
+                row.dataset.fsIndex = i;
+                if (i === currentMapIndex) row.classList.add('fs-current');
+
+                var handle = document.createElement('span');
+                handle.className = 'fs-drag-handle';
+                handle.textContent = '⠿';
+
+                var label = document.createElement('span');
+                label.className = 'fs-level-label';
+                label.textContent = m.name || 'Level ' + (i + 1);
+
+                var nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'fs-map-name';
+                nameInput.value = m.name || '';
+                nameInput.placeholder = 'Level ' + (i + 1);
+                nameInput.onchange = function() {
+                    var val = this.value.trim() || 'Level ' + (i + 1);
+                    modularWorld.maps[i].name = val;
+                    if (i === currentMapIndex) mapData.name = val;
+                    label.textContent = val;
+                    renderModularTabs();
+                };
+
+                var upBtn = document.createElement('button');
+                upBtn.innerHTML = '&#9650;';
+                upBtn.title = 'Move up';
+                upBtn.onclick = function() { fsMoveMap(i, -1); };
+                if (i === 0) upBtn.disabled = true;
+
+                var downBtn = document.createElement('button');
+                downBtn.innerHTML = '&#9660;';
+                downBtn.title = 'Move down';
+                downBtn.onclick = function() { fsMoveMap(i, 1); };
+                if (i === modularWorld.maps.length - 1) downBtn.disabled = true;
+
+                var exportBtn = document.createElement('button');
+                exportBtn.className = 'fs-btn fs-export';
+                exportBtn.textContent = 'Export';
+                exportBtn.title = 'Export this level as its own file';
+                exportBtn.onclick = function() { exportMap(i); };
+
+                var delBtn = document.createElement('button');
+                delBtn.className = 'fs-btn fs-delete';
+                delBtn.textContent = '✕';
+                delBtn.title = 'Remove this level';
+                delBtn.onclick = function() { fsDeleteMap(i); };
+                if (modularWorld.maps.length <= 1) delBtn.disabled = true;
+
+                row.appendChild(handle);
+                row.appendChild(label);
+                row.appendChild(nameInput);
+                row.appendChild(upBtn);
+                row.appendChild(downBtn);
+                row.appendChild(exportBtn);
+                row.appendChild(delBtn);
+
+                row.addEventListener('dragstart', function(e) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(i));
+                    this.classList.add('fs-dragging');
+                });
+                row.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    this.classList.add('fs-drag-over');
+                });
+                row.addEventListener('dragleave', function() {
+                    this.classList.remove('fs-drag-over');
+                });
+                row.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('fs-drag-over');
+                    var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+                    if (isNaN(fromIdx) || fromIdx === i) return;
+
+                    modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+                    var item = modularWorld.maps.splice(fromIdx, 1)[0];
+                    var adjustedTo = fromIdx < i ? i - 1 : i;
+                    modularWorld.maps.splice(adjustedTo, 0, item);
+
+                    if (currentMapIndex === fromIdx) currentMapIndex = adjustedTo;
+                    else if (fromIdx < currentMapIndex && i >= currentMapIndex) currentMapIndex--;
+                    else if (fromIdx > currentMapIndex && i <= currentMapIndex) currentMapIndex++;
+
+                    fsApplyChanges();
+                });
+                row.addEventListener('dragend', function() {
+                    document.querySelectorAll('.fs-map-row').forEach(function(r) {
+                        r.classList.remove('fs-dragging', 'fs-drag-over');
+                    });
+                });
+
+                row.addEventListener('click', function(e) {
+                    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+                    if (i === currentMapIndex) return;
+                    modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+                    currentMapIndex = i;
+                    hideFileSettings();
+                });
+
+                list.appendChild(row);
+            });
+        }
+
+        function fsApplyChanges() {
+            if (!modularWorld || !modularWorld.maps[currentMapIndex]) return;
+            loadMapData(modularWorld.maps[currentMapIndex]);
+            renderFileSettings();
+            renderModularTabs();
+            saveToStorage();
+        }
+
+        function fsMoveMap(index, dir) {
+            if (!modularWorld) return;
+            var to = index + dir;
+            if (to < 0 || to >= modularWorld.maps.length) return;
+
+            modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+            var temp = modularWorld.maps[index];
+            modularWorld.maps[index] = modularWorld.maps[to];
+            modularWorld.maps[to] = temp;
+
+            if (currentMapIndex === index) currentMapIndex = to;
+            else if (currentMapIndex === to) currentMapIndex = index;
+
+            fsApplyChanges();
+        }
+
+        function fsDeleteMap(index) {
+            if (!modularWorld || modularWorld.maps.length <= 1) return;
+            var name = modularWorld.maps[index].name || 'Level ' + (index + 1);
+            if (!confirm('Remove "' + name + '" from this world?')) return;
+
+            modularWorld.maps.splice(index, 1);
+            if (index < currentMapIndex) currentMapIndex--;
+            else if (currentMapIndex >= modularWorld.maps.length) currentMapIndex = modularWorld.maps.length - 1;
+
+            fsApplyChanges();
+        }
+
+        function exportWorld() { saveMap(); }
+
+        function exportMap(index) {
+            if (!modularWorld) return;
+            var map = modularWorld.maps[index];
+            var name = map.name || 'Level ' + (index + 1);
+            var world = { name: name, maps: [JSON.parse(JSON.stringify(map))] };
+            var content = 'loadModularData(' + serialize(world) + ');\n';
+            var blob = new Blob([content], { type: 'application/javascript' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = name.replace(/[^a-zA-Z0-9_-]/g, '_') + '.mod.js';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            document.getElementById('status').textContent = 'Exported "' + name + '"';
+        }
+
+        /* ---- Import Map ---- */
+        var _importFileData = null;
+
+        function showImportDialog() {
+            if (!modularWorld) return;
+            document.getElementById('fs-main-view').style.display = 'none';
+            document.getElementById('fs-import-view').style.display = 'block';
+            document.getElementById('fs-import-input').value = '';
+            document.getElementById('fs-import-list').innerHTML = '<p style="color:#666;font-size:12px;margin:0;">Select a .js file above to import a level from.</p>';
+            _importFileData = null;
+        }
+
+        function showImportBack() {
+            document.getElementById('fs-import-view').style.display = 'none';
+            document.getElementById('fs-main-view').style.display = '';
+            _importFileData = null;
+        }
+
+        function handleImportFile(file) {
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var importedData = null;
+                var orig = window.loadModularData;
+                window.loadModularData = function(data) { importedData = data; };
+                try { eval(e.target.result); } catch(err) {
+                    console.error(err);
+                    alert('Failed to parse file: ' + err.message);
+                    window.loadModularData = orig;
+                    return;
+                }
+                window.loadModularData = orig;
+
+                if (!importedData || !importedData.maps || importedData.maps.length === 0) {
+                    alert('No maps found in the selected file.');
+                    return;
+                }
+
+                _importFileData = importedData;
+                var list = document.getElementById('fs-import-list');
+                list.innerHTML = '';
+                importedData.maps.forEach(function(m, i) {
+                    var item = document.createElement('div');
+                    item.className = 'fs-import-item';
+                    var escName = (m.name || 'Level ' + (i + 1)).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+                    item.innerHTML = '<span class="fs-import-name">' + escName + '</span><span class="fs-import-arrow">→</span>';
+                    item.onclick = function() { selectImportLevel(i); };
+                    list.appendChild(item);
+                });
+            };
+            reader.readAsText(file);
+        }
+
+        function selectImportLevel(index) {
+            if (!_importFileData || !modularWorld) return;
+            var map = JSON.parse(JSON.stringify(_importFileData.maps[index]));
+            if (!map.name) map.name = 'Level ' + (modularWorld.maps.length + 1);
+            modularWorld.maps.push(map);
+            currentMapIndex = modularWorld.maps.length - 1;
+            fsApplyChanges();
+            hideFileSettings();
+            document.getElementById('status').textContent = 'Imported "' + map.name + '"';
+        }
+
         /* Playtester */
         var playtestGame = null;
         var playtestRAF = null;
