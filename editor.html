@@ -401,6 +401,28 @@
             width: 100%;
             text-align: center;
         }
+        #quick-add-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 210;
+            align-items: center;
+            justify-content: center;
+        }
+        #quick-add-overlay.open {
+            display: flex;
+        }
+        #quick-add-box {
+            background: #222;
+            border: 2px solid #555;
+            border-radius: 4px;
+            padding: 20px 24px;
+            min-width: 480px;
+            max-width: 560px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+
         #custom-modal-overlay {
             display: none;
             position: fixed;
@@ -736,6 +758,143 @@
         }
         .task-completer .task-fields label { font-size: 10px; }
         .task-arrow { color: #555; font-size: 11px; margin: 0 2px; }
+
+        /* Split button group */
+        .btn-group {
+            display: inline-flex;
+            gap: 0;
+            vertical-align: middle;
+        }
+        .btn-group .btn-group-main {
+            flex: 3;
+            border-radius: 0;
+            border-right: none;
+        }
+        .btn-group .btn-group-side {
+            flex: 1;
+            border-radius: 0;
+            background: #0a0a0a;
+            border-left: none;
+            padding: 3px 6px;
+            font-size: 14px;
+            line-height: 1;
+        }
+        .btn-group .btn-group-side:hover {
+            background: #222;
+        }
+
+        /* Quick-add overlay */
+        .qa-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .qa-grid button {
+            padding: 14px 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            text-align: center;
+            min-height: 60px;
+        }
+        .qa-grid button:hover {
+            opacity: 0.85;
+        }
+        .qa-grid button.qa-door {
+            background: #4a4a4a;
+            border-color: #666;
+        }
+        .qa-grid button.qa-key {
+            background: #8a8a00;
+            border-color: #aaaa20;
+            color: #fff;
+        }
+        .qa-grid button.qa-info {
+            background: #880088;
+            border-color: #aa00aa;
+            color: #fff;
+        }
+        .qa-advanced-row {
+            margin-top: 8px;
+        }
+        .qa-advanced-row button {
+            width: 100%;
+            padding: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .qa-form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+            align-items: center;
+            margin: 6px 0;
+            padding: 4px 0;
+        }
+        .qa-form-row label {
+            font-size: 12px;
+            color: #aaa;
+            white-space: nowrap;
+        }
+        .qa-form-row input[type="text"],
+        .qa-form-row input[type="number"] {
+            font-size: 12px;
+            padding: 2px 4px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #555;
+        }
+        .qa-form-row input[type="text"] { width: 200px; }
+        .qa-form-row input[type="number"] { width: 60px; }
+        .qa-form-row select {
+            font-size: 12px;
+            padding: 2px 4px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #555;
+        }
+        .qa-door-list {
+            max-height: 160px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 3px;
+            background: #1a1a1a;
+            margin: 6px 0;
+            padding: 2px;
+        }
+        .qa-door-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 6px;
+            cursor: pointer;
+            border-radius: 2px;
+            font-size: 11px;
+            color: #aaa;
+        }
+        .qa-door-item:hover {
+            background: #2a2a2a;
+            color: #ddd;
+        }
+        .qa-door-item .qa-door-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+            border: 1px solid #555;
+            flex-shrink: 0;
+        }
+        .qa-door-item .qa-door-id {
+            color: #666;
+            min-width: 24px;
+        }
+        .qa-door-item .qa-door-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
 </head>
 
@@ -756,7 +915,10 @@
         <button onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onclick="redo()" id="redo-btn" disabled title="Redo (Ctrl+Shift+Z)">↪ Redo</button>
         <span class="sep"></span>
-        <button onclick="showAddCustomDialog()">+ Add Block</button>
+        <span class="btn-group">
+            <button onclick="showQuickAddDialog()" class="btn-group-main">+ Add Block</button>
+            <button onclick="showAddCustomDialog()" class="btn-group-side" title="Advanced block settings">⚙</button>
+        </span>
         <span class="sep"></span>
         <button id="side-toggle" onclick="toggleSidePanel()">☰ Props</button>
         <span class="sep"></span>
@@ -836,6 +998,66 @@
                 <button onclick="createNewMap(+document.getElementById('new-w').value,+document.getElementById('new-h').value)">Create</button>
             </div>
             <button id="modal-close" onclick="hideNewDialog()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="quick-add-overlay">
+        <div id="quick-add-box">
+            <h2 id="quick-add-title">Quick Add Block</h2>
+            <div id="quick-add-body">
+                <div id="qa-menu">
+                    <div class="qa-grid">
+                        <button class="qa-door" onclick="quickAddDoor()">[ ] Door</button>
+                        <button class="qa-key" onclick="showQuickAddKeyForm()">KEY Key</button>
+                        <button class="qa-info" onclick="showQuickAddInfoForm()">(i) Info</button>
+                    </div>
+                    <div class="qa-advanced-row">
+                        <button onclick="showQuickAddAdvanced()">▼ Advanced — full block editor</button>
+                    </div>
+                </div>
+                <div id="qa-key-form" style="display:none">
+                    <p style="font-size:12px;color:#888;margin:0 0 8px 0;">Creates a key block that unlocks a door.</p>
+                    <div class="qa-form-row">
+                        <label>Name: <input type="text" id="qa-key-name" placeholder="e.g. Red Key"></label>
+                        <label>Colour: <input type="color" id="qa-key-colour" value="#CCFF00"></label>
+                    </div>
+                    <div class="qa-form-row">
+                        <label>Unlocks Door ID: <input type="number" id="qa-key-unlocks" value="0" min="0"></label>
+                    </div>
+                    <div id="qa-key-doors"></div>
+                    <div style="margin-top:8px;display:flex;gap:6px;">
+                        <button onclick="confirmQuickAddKey()">+ Add Key</button>
+                        <button onclick="showQuickAddDialog()">← Back</button>
+                    </div>
+                </div>
+                <div id="qa-info-form" style="display:none">
+                    <p style="font-size:12px;color:#888;margin:0 0 8px 0;">Creates an info block that shows a message to the player.</p>
+                    <div class="qa-form-row">
+                        <label>Name: <input type="text" id="qa-info-name" placeholder="e.g. Info Sign"></label>
+                        <label>Colour: <input type="color" id="qa-info-colour" value="#FF00FF"></label>
+                    </div>
+                    <div class="qa-form-row">
+                        <label>Task Type: <select id="qa-info-type" onchange="document.getElementById('qa-info-duration-row').style.display=this.value==='timeout'?'':'none'">
+                            <option value="timeout">Timed (auto-dismiss)</option>
+                            <option value="persistent">Persistent (stays on screen)</option>
+                        </select></label>
+                        <label>One-time: <input type="checkbox" id="qa-info-once" checked></label>
+                    </div>
+                    <div class="qa-form-row">
+                        <label>Message: <input type="text" id="qa-info-msg" placeholder="Info text to display" style="width:300px"></label>
+                    </div>
+                    <div class="qa-form-row" id="qa-info-duration-row">
+                        <label>Duration: <input type="number" id="qa-info-duration" value="5" min="1" max="60"> seconds</label>
+                    </div>
+                    <div style="margin-top:8px;display:flex;gap:6px;">
+                        <button onclick="confirmQuickAddInfo()">+ Add Info</button>
+                        <button onclick="showQuickAddDialog()">← Back</button>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top:10px;">
+                <button onclick="hideQuickAddDialog()" style="width:100%;">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -1193,6 +1415,172 @@
             document.getElementById('custom-modal-overlay').classList.remove('open');
         }
 
+        /* ---- Quick Add Block ---- */
+        function hideQuickAddDialog() {
+            document.getElementById('quick-add-overlay').classList.remove('open');
+            document.getElementById('qa-menu').style.display = '';
+            document.getElementById('qa-key-form').style.display = 'none';
+            document.getElementById('qa-info-form').style.display = 'none';
+        }
+
+        function showQuickAddDialog() {
+            document.getElementById('qa-menu').style.display = '';
+            document.getElementById('qa-key-form').style.display = 'none';
+            document.getElementById('qa-info-form').style.display = 'none';
+            document.getElementById('quick-add-overlay').classList.add('open');
+            renderDoorList();
+        }
+
+        function renderDoorList() {
+            var div = document.getElementById('qa-key-doors');
+            if (!mapData) { div.innerHTML = ''; return; }
+            var doors = mapData.keys.filter(function(k) { return k.isDoor; });
+            if (doors.length === 0) {
+                div.innerHTML = '<div style="font-size:11px;color:#555;margin:4px 0;">No doors yet — you can enter an ID manually.</div>';
+                return;
+            }
+            var html = '<div class="qa-door-list"><div style="padding:4px 6px;font-size:10px;color:#666;border-bottom:1px solid #2a2a2a;">Available doors (click to select):</div>';
+            doors.forEach(function(d) {
+                var name = d.name || 'Door ' + d.id;
+                html += '<div class="qa-door-item" onclick="document.getElementById(\'qa-key-unlocks\').value=' + d.id + '">'
+                    + '<span class="qa-door-swatch" style="background:' + d.colour + '"></span>'
+                    + '<span class="qa-door-id">#' + d.id + '</span>'
+                    + '<span class="qa-door-name">' + name.replace(/"/g,'&quot;') + '</span>'
+                    + '</div>';
+            });
+            html += '</div>';
+            div.innerHTML = html;
+        }
+
+        function showQuickAddKeyForm() {
+            document.getElementById('qa-menu').style.display = 'none';
+            document.getElementById('qa-key-form').style.display = '';
+            document.getElementById('qa-info-form').style.display = 'none';
+            document.getElementById('qa-key-name').value = '';
+            var colors = getCurrentThemeColors();
+            document.getElementById('qa-key-colour').value = (colors && colors[13]) || '#CCFF00';
+            document.getElementById('qa-key-unlocks').value = '0';
+            renderDoorList();
+        }
+
+        function confirmQuickAddKey() {
+            if (!mapData) { alert('No map loaded.'); return; }
+            var name = document.getElementById('qa-key-name').value.trim();
+            if (!name) { alert('Please enter a name for the key.'); return; }
+            var unlocks = parseInt(document.getElementById('qa-key-unlocks').value) || 0;
+            if (!unlocks) { alert('Please enter a Door ID to unlock.'); return; }
+            var id = getNextTileId();
+            var colour = document.getElementById('qa-key-colour').value;
+            var key = {
+                id: id, colour: colour, name: name,
+                solid: 0, isKey: true, unlocks: unlocks,
+                themeLinked: 'key'
+            };
+            if (!mapData.scripts) mapData.scripts = {};
+            var sn = 'unlock_' + id;
+            mapData.scripts[sn] = 'var door=this.current_map.keys.find(function(k){return k.id===' + unlocks + ';});if(door&&door.solid){door.solid=0;door.colour=this.current_map.keys.find(function(k){return k.id===1;}).colour;}';
+            key.script = sn;
+            mapData.keys.push(key);
+            hideQuickAddDialog();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            renderScripts();
+            pushHistory();
+            document.getElementById('status').textContent = 'Added key "' + name + '" (ID ' + id + ') unlocking door ' + unlocks;
+        }
+
+        function quickAddDoor() {
+            if (!mapData) { alert('No map loaded.'); return; }
+            var id = getNextTileId();
+            var colors = getCurrentThemeColors();
+            var colour = (colors && colors[12]) || '#4a4a4a';
+            mapData.keys.push({
+                id: id, colour: colour, name: 'Door ' + id,
+                solid: 1, isDoor: true,
+                themeLinked: 'door'
+            });
+            hideQuickAddDialog();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            pushHistory();
+            document.getElementById('status').textContent = 'Added door (ID ' + id + ')';
+        }
+
+        function showQuickAddInfoForm() {
+            document.getElementById('qa-menu').style.display = 'none';
+            document.getElementById('qa-key-form').style.display = 'none';
+            document.getElementById('qa-info-form').style.display = '';
+            document.getElementById('qa-info-name').value = '';
+            document.getElementById('qa-info-colour').value = '#FF00FF';
+            document.getElementById('qa-info-type').value = 'timeout';
+            document.getElementById('qa-info-msg').value = '';
+            document.getElementById('qa-info-duration').value = '5';
+            document.getElementById('qa-info-once').checked = true;
+            document.getElementById('qa-info-duration-row').style.display = '';
+        }
+
+        function confirmQuickAddInfo() {
+            if (!mapData) { alert('No map loaded.'); return; }
+            var name = document.getElementById('qa-info-name').value.trim();
+            if (!name) { alert('Please enter a name.'); return; }
+            var msg = document.getElementById('qa-info-msg').value.trim();
+            if (!msg) { alert('Please enter a message.'); return; }
+            var id = getNextTileId();
+            var colour = document.getElementById('qa-info-colour').value;
+            var taskType = document.getElementById('qa-info-type').value;
+            var duration = parseFloat(document.getElementById('qa-info-duration').value) || 5;
+            var once = document.getElementById('qa-info-once').checked;
+            if (!mapData.scripts) mapData.scripts = {};
+            var taskId = getNextTaskId();
+            var escapedMsg = msg.replace(/"/g, '\\"');
+            var key = {
+                id: id, colour: colour, name: name,
+                solid: 0,
+                isTask: true, taskId: taskId, taskType: taskType,
+                taskMessage: msg, taskOneTime: once
+            };
+            if (taskType === 'timeout') key.taskDuration = duration;
+            var sn = 'combined_' + id;
+            mapData.scripts[sn] = 'this.addTask(' + taskId + ',"' + escapedMsg + '","' + taskType + '",' + duration + ',' + once + ');';
+            key.script = sn;
+            mapData.keys.push(key);
+            hideQuickAddDialog();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            renderScripts();
+            renderTasks();
+            pushHistory();
+            document.getElementById('status').textContent = 'Added info "' + name + '" (ID ' + id + ')';
+        }
+
+        function showQuickAddAdvanced() {
+            hideQuickAddDialog();
+            showAddCustomDialog();
+        }
+
+        function getCurrentThemeColors() {
+            if (!mapData) return null;
+            var currentBg = mapData.keys[0] ? mapData.keys[0].colour : null;
+            if (!currentBg) return null;
+            for (var tname in presetThemes) {
+                var colors = presetThemes[tname];
+                if (colors[0] === currentBg) {
+                    var match = true;
+                    for (var i = 1; i < Math.min(12, mapData.keys.length); i++) {
+                        if (mapData.keys[i] && mapData.keys[i].colour !== colors[i]) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match) return colors;
+                }
+            }
+            return null;
+        }
+
         function updateKeyDoorScript(key, oldKey) {
             if (oldKey && oldKey.script && oldKey.script.startsWith('unlock_')) {
                 delete mapData.scripts[oldKey.script];
@@ -1201,8 +1589,8 @@
             if (key.isKey && key.unlocks && key.unlocks > 0) {
                 var sn = 'unlock_' + key.unlocks;
                 var doorId = key.unlocks;
-                mapData.scripts[sn] = 'var door=this.current_map.keys.find(function(k){return k.id===' + doorId + ';});if(door&&door.solid){door.solid=0;door.colour=\"#888\";}';
-                key.script = sn;
+            mapData.scripts[sn] = 'var door=this.current_map.keys.find(function(k){return k.id===' + doorId + ';});if(door&&door.solid){door.solid=0;door.colour=this.current_map.keys.find(function(k){return k.id===1;}).colour;}';
+            key.script = sn;
             } else {
                 if (key.script && key.script.startsWith('unlock_')) {
                     delete mapData.scripts[key.script];
@@ -1293,7 +1681,7 @@
 
             // Key unlock
             if (key.isKey && key.unlocks && key.unlocks > 0) {
-                scriptParts.push('var door=this.current_map.keys.find(function(k){return k.id===' + key.unlocks + ';});if(door&&door.solid){door.solid=0;door.colour=\"#888\";}');
+                scriptParts.push('var door=this.current_map.keys.find(function(k){return k.id===' + key.unlocks + ';});if(door&&door.solid){door.solid=0;door.colour=this.current_map.keys.find(function(k){return k.id===1;}).colour;}');
             }
 
             // Colour change
@@ -1543,7 +1931,7 @@
                     change_colour: "this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);",
                     next_level: "alert(\"You win!\");this.load_map(this.source_map);",
                     death: "alert(\"You died!\");this.load_map(this.source_map);",
-                    unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";",
+                    unlock: "var door=this.current_map.keys.find(function(k){return k.id===10;});if(door&&door.solid){door.solid=0;door.colour=this.current_map.keys.find(function(k){return k.id===1;}).colour;}",
                     combined_12: "this.activateCheckpoint(12);"
                 }
             };
@@ -1685,7 +2073,7 @@
                     change_colour: "this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);",
                     next_level: "alert(\"You win!\");this.load_map(this.source_map);",
                     death: "alert(\"You died!\");this.load_map(this.source_map);",
-                    unlock: "this.current_map.keys[10].solid = 0;this.current_map.keys[10].colour = \"#888\";",
+                    unlock: "var door=this.current_map.keys.find(function(k){return k.id===10;});if(door&&door.solid){door.solid=0;door.colour=this.current_map.keys.find(function(k){return k.id===1;}).colour;}",
                     combined_12: "this.activateCheckpoint(12);"
                 }
             };
@@ -1720,6 +2108,31 @@
                 el.textContent = key.id;
                 el.title = (key.name || defaultTileNames[i] || 'tile ' + i) + ' (ID ' + key.id + ')';
                 el.onclick = function() { selectTile(key.id); };
+                el.oncontextmenu = function(e) {
+                    e.preventDefault();
+                    if (key.id > 11) {
+                        showEditCustomDialog(key.id);
+                    } else {
+                        var editor = document.getElementById('palette-editor');
+                        var header = editor.closest('.side-section').querySelector('.section-header');
+                        if (header) {
+                            var body = header.parentNode.querySelector('.section-body');
+                            if (body && body.classList.contains('closed')) {
+                                header.click();
+                            }
+                        }
+                        var rows = editor.querySelectorAll('.tile-editor');
+                        for (var r = 0; r < rows.length; r++) {
+                            var idSpan = rows[r].querySelector('.tile-id');
+                            if (idSpan && parseInt(idSpan.textContent) === key.id) {
+                                rows[r].style.outline = '2px solid #888';
+                                rows[r].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                setTimeout(function(el) { el.style.outline = ''; }, 2000, rows[r]);
+                                break;
+                            }
+                        }
+                    }
+                };
                 div.appendChild(el);
             });
         }
@@ -1804,30 +2217,35 @@
 
         var presetThemes = {
             // bg(0), floor(1), brick-bounce(2), ice/jump(3), platform(4), super-bounce(5),
-            // wall-no-bounce(6), trigger(7), goal(8), death(9), brick-solid(10), unlock(11)
+            // wall-no-bounce(6), trigger(7), goal(8), death(9), brick-solid(10), unlock(11),
+            // door(12), key(13)
 
-            'Original':   ['#333', '#888', '#555', '#79DCF2', '#777', '#E373FA', '#666', '#73C6FA', '#FADF73', '#C93232', '#555', '#0FF'],
+            'Original':   ['#333', '#888', '#555', '#79DCF2', '#777', '#E373FA', '#666', '#73C6FA', '#FADF73', '#C93232', '#555', '#0FF', '#4a4a4a', '#CCFF00'],
 
-            'Lava Caves': ['#1a0000', '#4a1a1a', '#8b3a3a', '#FF6400', '#cc5500', '#FF4500', '#660000', '#FF6347', '#FFD700', '#8B0000', '#5c1a1a', '#00FFFF'],
+            'Lava Caves': ['#1a0000', '#4a1a1a', '#8b3a3a', '#FF6400', '#cc5500', '#FF4500', '#660000', '#FF6347', '#FFD700', '#8B0000', '#5c1a1a', '#00FFFF', '#3a1010', '#E8E800'],
 
-            'Forest':     ['#1a2a1a', '#5a8f3c', '#6b4423', '#7acf8a', '#4a7c59', '#8fcf4a', '#3a2a1a', '#cf8f4a', '#f0d060', '#c04040', '#5c3a1e', '#60cfb0'],
-            'Ocean':      ['#0a1a2a', '#2a6f9c', '#4a7a8a', '#6acfdf', '#3a8ab8', '#7adfef', '#1a3a4a', '#df8f4a', '#f0d060', '#cf4040', '#2a5a7a', '#60dfcf'],
-            'Lava':       ['#2a0800', '#8b3a1a', '#aa4400', '#ff8800', '#cc5500', '#ffaa00', '#4a1100', '#ff4400', '#ffd700', '#ff0000', '#6a1a00', '#00ffff'],
-            'Cyber':      ['#0a0a1a', '#333366', '#5555aa', '#00ccff', '#4444aa', '#ff00ff', '#1a1a44', '#ffff00', '#ffcc00', '#ff0044', '#333388', '#00ff88'],
-            'Pastel':     ['#e8e0d0', '#b8d8b8', '#d4b890', '#a4d8f4', '#c8d8a8', '#f4a4d0', '#c8b8a8', '#f4d4a4', '#f0d070', '#e08080', '#c8a888', '#a0d8d0'],
-            'Midnight':   ['#0a0a14', '#1a1a2e', '#2a2a4e', '#4a4a8e', '#3a2a5e', '#8a4aae', '#1a1a3e', '#6a4a8e', '#e0b040', '#c03030', '#2a2a5e', '#4a8ace'],
-            'Sunset':     ['#1a0a0a', '#5c3a1a', '#8b5e2a', '#d4a040', '#b07030', '#ff8800', '#3a1a0a', '#cc6040', '#f0c040', '#cc2020', '#6a3a1a', '#40a0d0'],
-            'Arctic':     ['#c8d0d8', '#b0c8da', '#8898b0', '#c0e0f0', '#a0b8d0', '#e0f0ff', '#687890', '#80b8e0', '#f0d060', '#d04040', '#7890a8', '#80d0e0'],
-            'Toxic':      ['#0a0a00', '#1a3a0a', '#2a5a1a', '#6aaa3a', '#3a6a1a', '#8add4a', '#0a1a00', '#ddaa00', '#f0d060', '#cc2020', '#1a4a0a', '#00ddaa'],
-            'Candy':      ['#f0e0e0', '#f4a0b0', '#d08090', '#80e0a0', '#f0c0d0', '#ff88ff', '#c08090', '#ffe060', '#f0d040', '#e04040', '#d090a0', '#60e0e0'],
-            'Haunted':    ['#0a0a12', '#2a2030', '#3a3040', '#605070', '#4a3a50', '#aa80c0', '#1a1820', '#80cc40', '#e0c040', '#cc2020', '#2a2830', '#40cc80'],
-            'Desert':     ['#1a1410', '#c0a060', '#a08040', '#e0c080', '#b09050', '#f0d090', '#705030', '#e0a040', '#f0d060', '#c04020', '#806040', '#40a0d0'],
+            'Forest':     ['#1a2a1a', '#5a8f3c', '#6b4423', '#7acf8a', '#4a7c59', '#8fcf4a', '#3a2a1a', '#cf8f4a', '#f0d060', '#c04040', '#5c3a1e', '#60cfb0', '#3a2510', '#C0FF00'],
+            'Ocean':      ['#0a1a2a', '#2a6f9c', '#4a7a8a', '#6acfdf', '#3a8ab8', '#7adfef', '#1a3a4a', '#df8f4a', '#f0d060', '#cf4040', '#2a5a7a', '#60dfcf', '#1a3040', '#CCFF33'],
+            'Lava':       ['#2a0800', '#8b3a1a', '#aa4400', '#ff8800', '#cc5500', '#ffaa00', '#4a1100', '#ff4400', '#ffd700', '#ff0000', '#6a1a00', '#00ffff', '#4a0e00', '#E8E800'],
+            'Cyber':      ['#0a0a1a', '#333366', '#5555aa', '#00ccff', '#4444aa', '#ff00ff', '#1a1a44', '#ffff00', '#ffcc00', '#ff0044', '#333388', '#00ff88', '#222255', '#44FF44'],
+            'Pastel':     ['#e8e0d0', '#b8d8b8', '#d4b890', '#a4d8f4', '#c8d8a8', '#f4a4d0', '#c8b8a8', '#f4d4a4', '#f0d070', '#e08080', '#c8a888', '#a0d8d0', '#a09078', '#D0E860'],
+            'Midnight':   ['#0a0a14', '#1a1a2e', '#2a2a4e', '#4a4a8e', '#3a2a5e', '#8a4aae', '#1a1a3e', '#6a4a8e', '#e0b040', '#c03030', '#2a2a5e', '#4a8ace', '#1e1e44', '#88CC44'],
+            'Sunset':     ['#1a0a0a', '#5c3a1a', '#8b5e2a', '#d4a040', '#b07030', '#ff8800', '#3a1a0a', '#cc6040', '#f0c040', '#cc2020', '#6a3a1a', '#40a0d0', '#442010', '#E8D000'],
+            'Arctic':     ['#c8d0d8', '#b0c8da', '#8898b0', '#c0e0f0', '#a0b8d0', '#e0f0ff', '#687890', '#80b8e0', '#f0d060', '#d04040', '#7890a8', '#80d0e0', '#607080', '#D0E888'],
+            'Toxic':      ['#0a0a00', '#1a3a0a', '#2a5a1a', '#6aaa3a', '#3a6a1a', '#8add4a', '#0a1a00', '#ddaa00', '#f0d060', '#cc2020', '#1a4a0a', '#00ddaa', '#0a2a00', '#88FF00'],
+            'Candy':      ['#f0e0e0', '#f4a0b0', '#d08090', '#80e0a0', '#f0c0d0', '#ff88ff', '#c08090', '#ffe060', '#f0d040', '#e04040', '#d090a0', '#60e0e0', '#b07080', '#E8E840'],
+            'Haunted':    ['#0a0a12', '#2a2030', '#3a3040', '#605070', '#4a3a50', '#aa80c0', '#1a1820', '#80cc40', '#e0c040', '#cc2020', '#2a2830', '#40cc80', '#1a1822', '#88CC40'],
+            'Desert':     ['#1a1410', '#c0a060', '#a08040', '#e0c080', '#b09050', '#f0d090', '#705030', '#e0a040', '#f0d060', '#c04020', '#806040', '#40a0d0', '#5a3a20', '#D0D040'],
         };
 
         function applyPreset(name) {
             var colors = presetThemes[name];
             mapData.keys.forEach(function(key, i) {
-                if (i < colors.length) key.colour = colors[i];
+                if (i < 12 && i < colors.length) key.colour = colors[i];
+            });
+            mapData.keys.forEach(function(key) {
+                if (key.themeLinked === 'door' && colors[12]) key.colour = colors[12];
+                if (key.themeLinked === 'key' && colors[13]) key.colour = colors[13];
             });
             renderPaletteTiles();
             renderPaletteEditor();
