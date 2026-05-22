@@ -209,7 +209,7 @@ Clarity.prototype.loadModularMap = function (index) {
     this.modularIndex = index;
     var mapData = JSON.parse(JSON.stringify(this.modularData.maps[index]));
     if (!mapData.scripts) mapData.scripts = {};
-    mapData.scripts.next_level = 'this.checkpoint=null;if(this.modularData){if(this.modularIndex+1<this.modularData.maps.length){this.loadModularMap(this.modularIndex+1);}else{this.showMessage("All levels complete!");}}else{this.showMessage("You win!");this.load_map(this.source_map);}';
+    mapData.scripts.next_level = 'this.checkpoint=null;if(typeof this.onLevelCompleted==="function")this.onLevelCompleted(this.modularIndex);if(this.modularData){if(this.modularIndex+1<this.modularData.maps.length){this.loadModularMap(this.modularIndex+1);}else{this.showMessage("All levels complete!");}}else{this.showMessage("You win!");this.load_map(this.source_map);}';
     mapData.scripts.death = '';
     this.source_map = mapData;
     this.load_map(mapData);
