@@ -573,12 +573,12 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
     var cpTile = this.current_map.keys.find(function (k) { return k.id === tileId; });
     if (!cpTile) return;
 
-    if (!this.oneTimeTriggered) this.oneTimeTriggered = {};
-
     var tileX = Math.round(this.player.loc.x / this.tile_size);
     var tileY = Math.round(this.player.loc.y / this.tile_size);
-    var triggerKey = 'cp_' + tileId + '_' + tileX + '_' + tileY;
-    var isNewLocation = !this.oneTimeTriggered[triggerKey];
+
+    var isSameCheckpoint = this.checkpoint &&
+        Math.round(this.checkpoint.playerX / this.tile_size) === tileX &&
+        Math.round(this.checkpoint.playerY / this.tile_size) === tileY;
 
     this.checkpoint = {
         playerX: this.player.loc.x,
@@ -587,19 +587,20 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
         doorStates: cpTile.saveDoorStates !== false ? this.getDoorStates() : []
     };
 
-    if (cpTile.respawnMessage) {
-        if (!cpTile.oneTimeOnly || isNewLocation) {
-            this.showMessage(cpTile.respawnMessage);
-        }
+    if (cpTile.respawnMessage && !isSameCheckpoint) {
+        this.showMessage(cpTile.respawnMessage);
     }
 
-    if (cpTile.oneTimeOnly && isNewLocation) {
-        this.oneTimeTriggered[triggerKey] = true;
-
-        if (cpTile.extraCommand && cpTile.extraTargetId) {
-            var targetTile = this.current_map.keys.find(function (k) { return k.id === cpTile.extraTargetId; });
-            if (targetTile) {
-                targetTile.colour = cpTile.extraTargetColour || targetTile.colour;
+    if (cpTile.oneTimeOnly) {
+        if (!this.oneTimeTriggered) this.oneTimeTriggered = {};
+        var triggerKey = 'cp_' + tileId + '_' + tileX + '_' + tileY;
+        if (!this.oneTimeTriggered[triggerKey]) {
+            this.oneTimeTriggered[triggerKey] = true;
+            if (cpTile.extraCommand && cpTile.extraTargetId) {
+                var targetTile = this.current_map.keys.find(function (k) { return k.id === cpTile.extraTargetId; });
+                if (targetTile) {
+                    targetTile.colour = cpTile.extraTargetColour || targetTile.colour;
+                }
             }
         }
     }
