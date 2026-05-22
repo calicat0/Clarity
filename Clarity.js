@@ -497,6 +497,7 @@ Clarity.prototype.draw_player = function (context) {
 
 Clarity.prototype.update = function () {
 
+    if (!this.current_map) return;
     this.update_player();
 };
 
