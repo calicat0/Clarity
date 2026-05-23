@@ -316,6 +316,20 @@
             border-color: #3a6a3a;
             background: #2a4a2a;
         }
+        .level-cb.treasure {
+            border-color: #aa8800;
+            background: #443300;
+        }
+        .level-cb.treasure.completed {
+            border-color: #d4a800;
+            background: #665500;
+        }
+        .level-name.hidden.treasure {
+            color: #aa8800;
+        }
+        .level-name.found.treasure {
+            color: #d4a800;
+        }
         #level-list {
             margin-bottom: 4px;
             padding: 2px 0;
@@ -550,6 +564,7 @@
             <label for="map-select" style="margin-right:2px;">Map:</label>
             <select id="map-select"></select>
             <button onclick="loadSelected()">Load</button>
+            <button id="continue-btn" onclick="continueGame()" title="Continue from last played level" style="display:none;">Continue</button>
             <span class="sep"></span>
             <input type="file" id="file-input" accept=".js">
             <button onclick="loadFile()">Load File</button>
@@ -630,6 +645,7 @@
                     <p class="subtitle">A MINIMAL TILE-BASED PLATFORMER</p>
                     <div class="divider"></div>
                     <button class="btn-start" onclick="hideMenu()">Start Game</button>
+                    <button id="menu-continue-btn" class="btn-start" onclick="hideMenu();continueGame();" style="display:none;margin-top:8px;background:#665500;">Continue</button>
                     <p style="margin-top:18px;font-size:11px;color:#555;">
                         <label style="color:#666;cursor:pointer;">
                             <input type="checkbox" id="chk-splash" onchange="saveSetting('showSplash', this.checked)" checked style="vertical-align:middle;">
@@ -716,6 +732,17 @@
             }
         };
 
+        var _origActivateCheckpoint = game.activateCheckpoint.bind(game);
+        game.activateCheckpoint = function(tileId) {
+            var ret = _origActivateCheckpoint(tileId);
+            if (game.modularData && game.modularData.maps[game.modularIndex] && game.modularData.maps[game.modularIndex].type !== 'treasure') {
+                var state = game.getLevelState();
+                saveLevelState(game.modularData.name, game.modularIndex, state);
+                saveLastPlayed(game.modularData.name, game.modularIndex);
+            }
+            return ret;
+        };
+
         var _origLoadMap = game.load_map.bind(game);
         game.load_map = function (map) {
             var ret = _origLoadMap(JSON.parse(JSON.stringify(map)));
@@ -730,30 +757,95 @@
         game.loadModularMap = function (index) {
             var ret = _origLoadModularMap(index);
             if (game.modularData) {
+                var mapInfo = game.modularData.maps[index];
+                if (mapInfo && mapInfo.type !== 'treasure') {
+                    saveLastPlayed(game.modularData.name, index);
+                }
                 saveCheckpoint(game.modularData.name, index);
                 updateLevelInfoPanel();
+                updateContinueButton();
             }
             game.limit_viewport = document.getElementById('viewport').checked;
             return ret;
         };
 
+        game.onBeforeTreasureExit = function(levelIndex, state) {
+            if (game.modularData) {
+                saveLevelState(game.modularData.name, levelIndex, state);
+            }
+        };
+
+        game.onCheckTreasureDiscovered = function(treasureId) {
+            if (!game.modularData) return false;
+            for (var i = 0; i < game.modularData.maps.length; i++) {
+                if (game.modularData.maps[i].type === 'treasure' && game.modularData.maps[i].treasureId === treasureId) {
+                    return isLevelDiscovered(game.modularData.name, i) || isLevelCompleted(game.modularData.name, i);
+                }
+            }
+            return false;
+        };
+
+        game.onPromptTreasureReentry = function(treasureId, confirmFn) {
+            var name = 'Treasure ' + treasureId;
+            if (game.modularData) {
+                for (var i = 0; i < game.modularData.maps.length; i++) {
+                    if (game.modularData.maps[i].type === 'treasure' && game.modularData.maps[i].treasureId === treasureId) {
+                        name = game.modularData.maps[i].name || name;
+                        break;
+                    }
+                }
+            }
+            showTreasurePrompt(name, confirmFn);
+        };
+        
         function loadMapData(data) {
             game.modularData = null;
             game.source_map = JSON.parse(JSON.stringify(data));
             game.checkpoint = null;
             game.oneTimeTriggered = {};
+            game._savedLevelState = null;
             game.load_map(data);
             game.limit_viewport = document.getElementById('viewport').checked;
             updateLevelInfoPanel();
         }
-
+        
         function loadModularData(data) {
             game.modularData = JSON.parse(JSON.stringify(data));
             game.modularIndex = 0;
             game.checkpoint = null;
             game.oneTimeTriggered = {};
+            game._savedLevelState = null;
             game.loadModularMap(0);
             updateLevelInfoPanel();
+            updateContinueButton();
+        }
+
+        function updateContinueButton() {
+            var btn = document.getElementById('continue-btn');
+            var menuBtn = document.getElementById('menu-continue-btn');
+            var last = loadLastPlayed();
+            var show = last && game.modularData && last.worldName === game.modularData.name;
+            if (btn) {
+                btn.style.display = show ? '' : 'none';
+                if (show) btn.textContent = 'Continue (Lv ' + (last.levelIndex + 1) + ')';
+            }
+            if (menuBtn) {
+                menuBtn.style.display = show ? '' : 'none';
+            }
+        }
+
+        function continueGame() {
+            var last = loadLastPlayed();
+            if (!last || !game.modularData || last.worldName !== game.modularData.name) return;
+            var idx = last.levelIndex;
+            if (idx < 0 || idx >= game.modularData.maps.length) return;
+            game.checkpoint = null;
+            game._savedLevelState = null;
+            game.loadModularMap(idx);
+            var saved = loadLevelState(game.modularData.name, idx);
+            if (saved) {
+                game.setLevelState(saved);
+            }
         }
 
         /* ---- UI Updates ---- */
@@ -762,7 +854,9 @@
             var info = document.getElementById('level-info');
             if (!info) return;
             if (game.modularData && game.current_map) {
-                info.textContent = game.modularData.name + ' — ' + (game.current_map.name || 'Level ' + (game.modularIndex + 1)) + ' (' + (game.modularIndex + 1) + '/' + game.modularData.maps.length + ')';
+                var curMap = game.modularData.maps[game.modularIndex];
+                var treasureTag = curMap && curMap.type === 'treasure' ? ' [Treasure]' : '';
+                info.textContent = game.modularData.name + ' — ' + (game.current_map.name || 'Level ' + (game.modularIndex + 1)) + treasureTag + ' (' + (game.modularIndex + 1) + '/' + game.modularData.maps.length + ')';
             } else if (game.current_map) {
                 info.textContent = game.current_map.name || '';
             } else {
@@ -793,6 +887,38 @@
         function isLevelDiscovered(worldName, levelIndex) {
             var cps = loadCheckpoints();
             return !!(cps[worldName] && cps[worldName][String(levelIndex)]);
+        }
+
+        /* ---- Level State Persistence (localStorage) ---- */
+
+        function saveLevelState(worldName, levelIndex, state) {
+            var states = loadLevelStates();
+            if (!states[worldName]) states[worldName] = {};
+            states[worldName][String(levelIndex)] = state;
+            try { localStorage.setItem('clarity-level-states', JSON.stringify(states)); } catch (e) {}
+        }
+
+        function loadLevelStates() {
+            try {
+                var raw = localStorage.getItem('clarity-level-states');
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) { return {}; }
+        }
+
+        function loadLevelState(worldName, levelIndex) {
+            var states = loadLevelStates();
+            return (states[worldName] && states[worldName][String(levelIndex)]) || null;
+        }
+
+        function saveLastPlayed(worldName, levelIndex) {
+            try { localStorage.setItem('clarity-last-played', JSON.stringify({ worldName: worldName, levelIndex: levelIndex, timestamp: Date.now() })); } catch (e) {}
+        }
+
+        function loadLastPlayed() {
+            try {
+                var raw = localStorage.getItem('clarity-last-played');
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) { return null; }
         }
 
         /* ---- Completions (localStorage) ---- */
@@ -837,14 +963,27 @@
                 var completed = isLevelCompleted(worldName, i);
                 var cpEnabled = !!m.checkpoint;
                 var canWarp = discovered || cpEnabled;
+                var isTreasure = m.type === 'treasure';
+                var isCurrent = i === game.modularIndex;
 
                 var cb = document.createElement('span');
-                cb.className = 'level-cb' + (completed ? ' completed' : '');
+                cb.className = 'level-cb' + (completed ? ' completed' : '') + (isTreasure ? ' treasure' : '');
+                cb.title = completed ? 'Completed' : 'Not completed';
                 row.appendChild(cb);
 
                 var nameSpan = document.createElement('span');
                 nameSpan.className = 'level-name';
-                if (discovered || cpEnabled) {
+                if (isCurrent) nameSpan.style.fontWeight = 'bold';
+                if (isTreasure) {
+                    nameSpan.classList.add('treasure');
+                    if (discovered || cpEnabled) {
+                        nameSpan.textContent = m.name || 'Treasure ' + m.treasureId;
+                        nameSpan.classList.add('found');
+                    } else {
+                        nameSpan.textContent = '???';
+                        nameSpan.classList.add('hidden');
+                    }
+                } else if (discovered || cpEnabled) {
                     nameSpan.textContent = m.name || 'Level ' + (i + 1);
                     nameSpan.classList.add('found');
                 } else {
@@ -883,6 +1022,44 @@
 
         /* ---- Progress Reset ---- */
 
+        function showTreasurePrompt(name, onGo) {
+            var overlay = document.createElement('div');
+            overlay.className = 'confirm-overlay';
+            overlay.innerHTML =
+                '<div class="confirm-box" style="border-color:#aa8800;">' +
+                '<p style="font-size:14px;color:#d4a800;margin-bottom:4px;">' + name + '</p>' +
+                '<p style="font-size:12px;color:#aaa;margin:0 0 16px 0;">This treasure has been discovered.<br>Warp there now?</p>' +
+                '<div class="confirm-actions">' +
+                '<button class="confirm-danger" style="background:#665500;border-color:#aa8800;color:#ffd700;">Go</button>' +
+                '<button class="confirm-cancel">Ignore</button>' +
+                '</div></div>';
+
+            var dismissTimer = setTimeout(function() {
+                overlay.remove();
+                game.cancelTreasurePrompt();
+            }, 10000);
+
+            game.onTreasurePromptDismiss = function() {
+                clearTimeout(dismissTimer);
+                game.onTreasurePromptDismiss = null;
+                overlay.remove();
+            };
+
+            overlay.querySelector('.confirm-danger').onclick = function() {
+                clearTimeout(dismissTimer);
+                game.onTreasurePromptDismiss = null;
+                overlay.remove();
+                onGo();
+            };
+            overlay.querySelector('.confirm-cancel').onclick = function() {
+                clearTimeout(dismissTimer);
+                game.onTreasurePromptDismiss = null;
+                overlay.remove();
+                game.cancelTreasurePrompt();
+            };
+            document.body.appendChild(overlay);
+        }
+
         function showConfirmDialog(message, onConfirm) {
             var overlay = document.createElement('div');
             overlay.className = 'confirm-overlay';
@@ -907,8 +1084,11 @@
             try {
                 localStorage.removeItem('clarity-checkpoints');
                 localStorage.removeItem('clarity-completions');
+                localStorage.removeItem('clarity-level-states');
+                localStorage.removeItem('clarity-last-played');
             } catch (e) {}
             updateLevelInfoPanel();
+            updateContinueButton();
         }
 
         function confirmClearAllProgress() {

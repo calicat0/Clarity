@@ -63,6 +63,12 @@ var Clarity = function () {
     this.checkpoint = null;
     this.tasks = {};
     this.oneTimeTriggered = {};
+    this.treasureReturnIndex = null;
+    this._treasureCooldown = 0;
+    this._treasurePromptActive = false;
+    this._treasurePromptTileX = null;
+    this._treasurePromptTileY = null;
+    this.onTreasurePromptDismiss = null;
 
     window.onkeydown = this.keydown.bind(this);
     window.onkeyup   = this.keyup.bind(this);
@@ -189,6 +195,7 @@ Clarity.prototype.load_map = function (map) {
     };
 
     this.clearTasks();
+    this.cancelTreasurePrompt();
 
     this.log('Successfully loaded map data.');
 
@@ -209,10 +216,20 @@ Clarity.prototype.loadModularMap = function (index) {
     this.modularIndex = index;
     var mapData = JSON.parse(JSON.stringify(this.modularData.maps[index]));
     if (!mapData.scripts) mapData.scripts = {};
-    mapData.scripts.next_level = 'this.checkpoint=null;if(typeof this.onLevelCompleted==="function")this.onLevelCompleted(this.modularIndex);if(this.modularData){if(this.modularIndex+1<this.modularData.maps.length){this.loadModularMap(this.modularIndex+1);}else{this.showMessage("All levels complete!");}}else{this.showMessage("You win!");this.load_map(this.source_map);}';
+    var isTreasure = this.modularData.maps[index] && this.modularData.maps[index].type === 'treasure';
+    if (isTreasure && this.treasureReturnIndex !== null) {
+        var retIdx = this.treasureReturnIndex;
+        mapData.scripts.next_level = 'this.checkpoint=null;if(typeof this.onLevelCompleted==="function")this.onLevelCompleted(this.modularIndex);this.treasureReturnIndex=null;this.loadModularMap(' + retIdx + ');';
+    } else {
+        mapData.scripts.next_level = 'this.checkpoint=null;if(typeof this.onLevelCompleted==="function")this.onLevelCompleted(this.modularIndex);if(this.modularData){var nx=this.findNextMainlineLevel(this.modularIndex+1);if(nx>=0){this.loadModularMap(nx);}else{this.showMessage("All levels complete!");}}else{this.showMessage("You win!");this.load_map(this.source_map);}';
+    }
     mapData.scripts.death = '';
     this.source_map = mapData;
     this.load_map(mapData);
+    if (this._savedLevelState && this.modularData.maps[index] && this.modularData.maps[index].type !== 'treasure') {
+        this.setLevelState(this._savedLevelState);
+        this._savedLevelState = null;
+    }
     this.limit_viewport = true;
 };
 
@@ -499,6 +516,20 @@ Clarity.prototype.update = function () {
 
     if (!this.current_map) return;
     this.update_player();
+
+    if (this._treasurePromptActive && this._treasurePromptTileX !== null && this.tile_size) {
+        var px = Math.round(this.player.loc.x / this.tile_size);
+        var py = Math.round(this.player.loc.y / this.tile_size);
+        if (Math.abs(px - this._treasurePromptTileX) > 5 || Math.abs(py - this._treasurePromptTileY) > 5) {
+            this._treasurePromptActive = false;
+            this._treasurePromptTileX = null;
+            this._treasurePromptTileY = null;
+            if (typeof this.onTreasurePromptDismiss === 'function') {
+                this.onTreasurePromptDismiss();
+                this.onTreasurePromptDismiss = null;
+            }
+        }
+    }
 };
 
 Clarity.prototype.showMessage = function (text, duration) {
@@ -560,6 +591,60 @@ Clarity.prototype.completeTask = function (taskId) {
     }, 300);
 };
 
+Clarity.prototype.getLevelState = function () {
+    return {
+        playerX: this.player.loc.x,
+        playerY: this.player.loc.y,
+        playerColour: this.player.colour,
+        doorStates: this.getDoorStates(),
+        checkpoint: this.checkpoint ? JSON.parse(JSON.stringify(this.checkpoint)) : null,
+        oneTimeTriggered: this.oneTimeTriggered ? JSON.parse(JSON.stringify(this.oneTimeTriggered)) : {},
+        tasks: Object.keys(this.tasks).map(function (id) {
+            var t = this.tasks[id];
+            return { id: t.id, message: t.message };
+        }, this)
+    };
+};
+
+Clarity.prototype.setLevelState = function (state) {
+    if (!state) return;
+    this.player.loc.x = state.playerX;
+    this.player.loc.y = state.playerY;
+    this.player.colour = state.playerColour;
+    if (state.doorStates) {
+        state.doorStates.forEach(function (ds) {
+            var door = this.current_map.keys.find(function (k) { return k.id === ds.id; });
+            if (door) {
+                door.solid = ds.solid;
+                door.colour = ds.colour;
+            }
+        }, this);
+    }
+    this.checkpoint = state.checkpoint ? JSON.parse(JSON.stringify(state.checkpoint)) : null;
+    this.oneTimeTriggered = state.oneTimeTriggered ? JSON.parse(JSON.stringify(state.oneTimeTriggered)) : {};
+    // Restore persistent tasks
+    if (state.tasks) {
+        state.tasks.forEach(function (t) {
+            if (this.tasks[t.id]) return;
+            var list = document.getElementById('task-list');
+            if (!list) {
+                list = document.createElement('div');
+                list.id = 'task-list';
+                list.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:9998;pointer-events:none;align-items:center;';
+                document.body.appendChild(list);
+            }
+            var el = document.createElement('div');
+            el.style.cssText = 'background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:4px;font:16px monospace;transition:opacity 0.5s;text-align:center;';
+            el.textContent = t.message;
+            list.appendChild(el);
+            this.tasks[t.id] = { id: t.id, message: t.message, element: el };
+        }, this);
+    }
+    // Prevent re-triggering the tile the player is standing on
+    var ft = this.get_tile(Math.round(this.player.loc.x / this.tile_size), Math.round(this.player.loc.y / this.tile_size));
+    if (ft && ft.id !== undefined) this.last_tile = ft.id;
+};
+
 Clarity.prototype.getDoorStates = function () {
     var states = [];
     this.current_map.keys.forEach(function (k) {
@@ -605,6 +690,66 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
             }
         }
     }
+};
+
+Clarity.prototype.findNextMainlineLevel = function (fromIndex) {
+    if (!this.modularData) return -1;
+    for (var i = fromIndex; i < this.modularData.maps.length; i++) {
+        if (this.modularData.maps[i].type !== 'treasure') return i;
+    }
+    return -1;
+};
+
+Clarity.prototype.goToTreasure = function (treasureId) {
+    if (!this.modularData) return false;
+    if (this._treasurePromptActive) return false;
+    if (this._treasureCooldown && this._treasureCooldown > Date.now()) return false;
+
+    // If treasure has been discovered before, prompt instead of auto-entering
+    if (typeof this.onCheckTreasureDiscovered === 'function' && this.onCheckTreasureDiscovered(treasureId)) {
+        if (typeof this.onPromptTreasureReentry === 'function') {
+            var self = this;
+            this._treasurePromptActive = true;
+            this._treasurePromptTileX = Math.round(this.player.loc.x / this.tile_size);
+            this._treasurePromptTileY = Math.round(this.player.loc.y / this.tile_size);
+            this.onPromptTreasureReentry(treasureId, function () {
+                self._treasurePromptActive = false;
+                self._treasurePromptTileX = null;
+                self._treasurePromptTileY = null;
+                self._doGoToTreasure(treasureId);
+            });
+            return true;
+        }
+    }
+
+    return this._doGoToTreasure(treasureId);
+};
+
+Clarity.prototype.cancelTreasurePrompt = function () {
+    this._treasurePromptActive = false;
+    this._treasurePromptTileX = null;
+    this._treasurePromptTileY = null;
+    this.onTreasurePromptDismiss = null;
+};
+
+Clarity.prototype._doGoToTreasure = function (treasureId) {
+    if (!this.modularData) return false;
+    for (var i = 0; i < this.modularData.maps.length; i++) {
+        if (this.modularData.maps[i].type === 'treasure' && this.modularData.maps[i].treasureId === treasureId) {
+            this._savedLevelState = this.getLevelState();
+            if (typeof this.onBeforeTreasureExit === 'function') {
+                this.onBeforeTreasureExit(this.modularIndex, this._savedLevelState);
+            }
+            this.treasureReturnIndex = this.modularIndex;
+            this.checkpoint = null;
+            this.oneTimeTriggered = {};
+            this.loadModularMap(i);
+            this._treasureCooldown = Date.now() + 3000;
+            return true;
+        }
+    }
+    this.error('Treasure map with ID ' + treasureId + ' not found.');
+    return false;
 };
 
 Clarity.prototype.handleDeath = function () {

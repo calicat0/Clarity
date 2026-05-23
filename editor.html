@@ -1010,6 +1010,7 @@
                         <button class="qa-door" onclick="quickAddDoor()">[ ] Door</button>
                         <button class="qa-key" onclick="showQuickAddKeyForm()">KEY Key</button>
                         <button class="qa-info" onclick="showQuickAddInfoForm()">(i) Info</button>
+                        <button onclick="showQuickAddTreasureForm()" style="background:#887700;border-color:#aa8800;color:#fff;">Treasure Exit</button>
                     </div>
                     <div class="qa-advanced-row">
                         <button onclick="showQuickAddAdvanced()">▼ Advanced — full block editor</button>
@@ -1027,6 +1028,20 @@
                     <div id="qa-key-doors"></div>
                     <div style="margin-top:8px;display:flex;gap:6px;">
                         <button onclick="confirmQuickAddKey()">+ Add Key</button>
+                        <button onclick="showQuickAddDialog()">← Back</button>
+                    </div>
+                </div>
+                <div id="qa-treasure-form" style="display:none">
+                    <p style="font-size:12px;color:#888;margin:0 0 8px 0;">Creates a treasure exit block that warps the player to a treasure map.</p>
+                    <div class="qa-form-row">
+                        <label>Name: <input type="text" id="qa-treasure-name" placeholder="e.g. Treasure Portal"></label>
+                        <label>Colour: <input type="color" id="qa-treasure-colour" value="#D4A800"></label>
+                    </div>
+                    <div class="qa-form-row">
+                        <label>Unlocks Treasure ID: <input type="number" id="qa-treasure-id" value="1" min="1"></label>
+                    </div>
+                    <div style="margin-top:8px;display:flex;gap:6px;">
+                        <button onclick="confirmQuickAddTreasure()">+ Add Treasure Exit</button>
                         <button onclick="showQuickAddDialog()">← Back</button>
                     </div>
                 </div>
@@ -1098,6 +1113,10 @@
                     <label><input type="checkbox" id="custom-is-death"> Is Death (kill player, auto non-solid)</label>
                 </div>
                 <div class="prop-row">
+                    <label><input type="checkbox" id="custom-is-treasure-exit" onchange="toggleTreasureExitFields()"> Is Treasure Exit</label>
+                    <label>Unlocks Treasure ID: <input type="number" id="custom-treasure-id" value="0" min="0" style="width:52px"></label>
+                </div>
+                <div class="prop-row">
                     <label><input type="checkbox" id="custom-is-checkpoint" onchange="toggleCpFields()"> Is Checkpoint</label>
                     <label><input type="checkbox" id="custom-save-door-states" checked> Save Door States</label>
                 </div>
@@ -1155,7 +1174,9 @@
                     <button onclick="showAddMapDialog()">+ New Map</button>
                     <button onclick="showImportDialog()">Import Level</button>
                     <button onclick="exportWorld()">Export All</button>
+                    <button onclick="saveWorldSettings()" style="background:#2a4a2a;border-color:#4a7a4a;">Save</button>
                 </div>
+                <div id="fs-saved-indicator" style="text-align:right;font-size:11px;color:#555;margin-top:4px;padding-top:4px;border-top:1px solid #333;">—</div>
             </div>
             <div id="fs-import-view" style="display:none">
                 <div id="fs-import-header">
@@ -1265,7 +1286,12 @@
         function saveToStorage() {
             if (!mapData) return;
             if (modularWorld) {
+                var existing = modularWorld.maps[currentMapIndex] || {};
                 modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+                var preserveFields = ['type', 'treasureId', 'checkpoint'];
+                preserveFields.forEach(function(f) {
+                    if (existing[f] !== undefined) modularWorld.maps[currentMapIndex][f] = existing[f];
+                });
                 localStorage.setItem('clarity-editor-modular', JSON.stringify(modularWorld));
             } else {
                 localStorage.setItem('clarity-editor-map', JSON.stringify(mapData));
@@ -1330,6 +1356,8 @@
             document.getElementById('cc-random').checked = true;
             document.getElementById('custom-cc-colour').value = '#FF9900';
             document.getElementById('custom-is-death').checked = false;
+            document.getElementById('custom-is-treasure-exit').checked = false;
+            document.getElementById('custom-treasure-id').value = '0';
             document.getElementById('custom-is-checkpoint').checked = false;
             document.getElementById('custom-save-door-states').checked = true;
             document.getElementById('custom-respawn-enabled').checked = false;
@@ -1352,6 +1380,7 @@
             document.getElementById('task-msg-row').style.display = 'none';
             document.getElementById('task-duration-row').style.display = 'none';
             document.getElementById('task-once-row').style.display = 'none';
+            toggleTreasureExitFields();
             document.getElementById('custom-modal-overlay').classList.add('open');
         }
 
@@ -1385,6 +1414,8 @@
                 document.getElementById('cc-random').checked = true;
             }
             document.getElementById('custom-is-death').checked = key.script === 'death';
+            document.getElementById('custom-is-treasure-exit').checked = !!key.isTreasureExit;
+            document.getElementById('custom-treasure-id').value = key.treasureTargetId || '0';
             document.getElementById('custom-is-checkpoint').checked = !!key.isCheckpoint;
             document.getElementById('custom-save-door-states').checked = key.saveDoorStates !== false;
             document.getElementById('custom-respawn-enabled').checked = !!key.respawnMessage;
@@ -1421,14 +1452,61 @@
             document.getElementById('qa-menu').style.display = '';
             document.getElementById('qa-key-form').style.display = 'none';
             document.getElementById('qa-info-form').style.display = 'none';
+            document.getElementById('qa-treasure-form').style.display = 'none';
         }
 
         function showQuickAddDialog() {
             document.getElementById('qa-menu').style.display = '';
             document.getElementById('qa-key-form').style.display = 'none';
             document.getElementById('qa-info-form').style.display = 'none';
+            document.getElementById('qa-treasure-form').style.display = 'none';
             document.getElementById('quick-add-overlay').classList.add('open');
             renderDoorList();
+        }
+
+        function showQuickAddTreasureForm() {
+            if (!mapData) { alert('No map loaded.'); return; }
+            document.getElementById('qa-menu').style.display = 'none';
+            document.getElementById('qa-key-form').style.display = 'none';
+            document.getElementById('qa-info-form').style.display = 'none';
+            document.getElementById('qa-treasure-form').style.display = '';
+            document.getElementById('qa-treasure-name').value = '';
+            document.getElementById('qa-treasure-colour').value = '#D4A800';
+            document.getElementById('qa-treasure-id').value = '1';
+            // Pre-fill next available treasure ID from world
+            if (modularWorld) {
+                var maxId = 0;
+                modularWorld.maps.forEach(function(m) {
+                    if (m.type === 'treasure' && m.treasureId > maxId) maxId = m.treasureId;
+                });
+                document.getElementById('qa-treasure-id').value = maxId + 1;
+            }
+        }
+
+        function confirmQuickAddTreasure() {
+            if (!mapData) { alert('No map loaded.'); return; }
+            var name = document.getElementById('qa-treasure-name').value.trim();
+            if (!name) { alert('Please enter a name for the treasure exit.'); return; }
+            var treasureId = parseInt(document.getElementById('qa-treasure-id').value) || 0;
+            if (!treasureId) { alert('Please enter a Treasure ID to unlock.'); return; }
+            var id = getNextTileId();
+            var colour = document.getElementById('qa-treasure-colour').value;
+            if (!mapData.scripts) mapData.scripts = {};
+            var key = {
+                id: id, colour: colour, name: name,
+                solid: 0, isTreasureExit: true, treasureTargetId: treasureId,
+            };
+            var sn = 'treasure_exit_' + id;
+            mapData.scripts[sn] = 'this.goToTreasure(' + treasureId + ');';
+            key.script = sn;
+            mapData.keys.push(key);
+            hideQuickAddDialog();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            renderScripts();
+            pushHistory();
+            document.getElementById('status').textContent = 'Added treasure exit "' + name + '" (ID ' + id + ') -> treasure ' + treasureId;
         }
 
         function renderDoorList() {
@@ -1511,6 +1589,7 @@
         function showQuickAddInfoForm() {
             document.getElementById('qa-menu').style.display = 'none';
             document.getElementById('qa-key-form').style.display = 'none';
+            document.getElementById('qa-treasure-form').style.display = 'none';
             document.getElementById('qa-info-form').style.display = '';
             document.getElementById('qa-info-name').value = '';
             document.getElementById('qa-info-colour').value = '#FF00FF';
@@ -1643,6 +1722,8 @@
             var isDoor = document.getElementById('custom-is-door').checked;
             var lockKey = parseInt(document.getElementById('custom-lock-key').value) || 0;
             var hasDeath = document.getElementById('custom-is-death').checked;
+            var hasTreasureExit = document.getElementById('custom-is-treasure-exit').checked;
+            var treasureTargetId = parseInt(document.getElementById('custom-treasure-id').value) || 0;
             var hasCheckpoint = document.getElementById('custom-is-checkpoint').checked;
             var hasCC = document.getElementById('custom-colour-change').checked;
             var hasTask = document.getElementById('custom-has-task').checked;
@@ -1697,6 +1778,16 @@
                 }
             } else {
                 delete key.ccColour;
+            }
+
+            // Treasure exit
+            if (hasTreasureExit && treasureTargetId > 0) {
+                key.isTreasureExit = true;
+                key.treasureTargetId = treasureTargetId;
+                scriptParts.push('this.goToTreasure(' + treasureTargetId + ');');
+            } else {
+                delete key.isTreasureExit;
+                delete key.treasureTargetId;
             }
 
             // Death (special: engine checks key.script === "death")
@@ -1997,6 +2088,20 @@
             document.getElementById('checkpoint-msg-row').style.display = hasCp ? '' : 'none';
             document.getElementById('checkpoint-once-row').style.display = hasCp ? '' : 'none';
             if (hasCp) toggleCpOnceFields();
+        }
+
+        function toggleTreasureExitFields() {
+            var hasTE = document.getElementById('custom-is-treasure-exit').checked;
+            var row = document.getElementById('custom-is-treasure-exit').closest('.prop-row');
+            if (row) {
+                var idInput = row.querySelector('input[id="custom-treasure-id"]');
+                if (idInput) {
+                    idInput.disabled = !hasTE;
+                    idInput.style.opacity = hasTE ? '1' : '0.4';
+                }
+                var label = idInput ? idInput.closest('label') : null;
+                if (label) label.style.opacity = hasTE ? '1' : '0.4';
+            }
         }
 
         function toggleCpOnceFields() {
@@ -2604,7 +2709,11 @@
 
         function saveMap() {
             if (!mapData) return;
+            var existing = modularWorld.maps[currentMapIndex] || {};
             modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+            ['type', 'treasureId', 'checkpoint'].forEach(function(f) {
+                if (existing[f] !== undefined) modularWorld.maps[currentMapIndex][f] = existing[f];
+            });
             var wnInput = document.getElementById('fs-world-name');
             var worldName = wnInput ? wnInput.value.trim() : '';
             var name = worldName || modularWorld.name || mapData.name || 'world';
@@ -2624,7 +2733,12 @@
         /* ---- File Settings ---- */
         function showFileSettings() {
             if (!mapData || !modularWorld) return;
+            var existing = modularWorld.maps[currentMapIndex] || {};
             modularWorld.maps[currentMapIndex] = JSON.parse(JSON.stringify(mapData));
+            var preserveFields = ['type', 'treasureId', 'checkpoint'];
+            preserveFields.forEach(function(f) {
+                if (existing[f] !== undefined) modularWorld.maps[currentMapIndex][f] = existing[f];
+            });
             document.getElementById('file-settings-overlay').classList.add('open');
             renderFileSettings();
         }
@@ -2645,6 +2759,7 @@
             wnInput.value = modularWorld.name || '';
             wnInput.onchange = function() {
                 modularWorld.name = this.value;
+                markFsUnsaved();
             };
 
             var list = document.getElementById('fs-map-list');
@@ -2669,6 +2784,39 @@
                     modularWorld.maps[i].checkpoint = this.checked;
                     if (i === currentMapIndex) mapData.checkpoint = this.checked;
                     saveToStorage();
+                    markFsUnsaved();
+                };
+
+                var typeSelect = document.createElement('select');
+                typeSelect.style.cssText = 'font-size:10px;padding:1px 2px;background:#111;color:#ddd;border:1px solid #555;flex-shrink:0;';
+                typeSelect.innerHTML = '<option value="mainline">Main</option><option value="treasure">Treasure</option>';
+                typeSelect.value = m.type === 'treasure' ? 'treasure' : 'mainline';
+                typeSelect.onchange = function() {
+                    modularWorld.maps[i].type = this.value;
+                    renderFileSettings();
+                    saveToStorage();
+                    markFsUnsaved();
+                };
+
+                var tidInput = document.createElement('input');
+                tidInput.type = 'number';
+                tidInput.min = '0';
+                tidInput.style.cssText = 'width:36px;font-size:10px;padding:1px 2px;background:#111;color:#ddd;border:1px solid #555;flex-shrink:0;';
+                tidInput.value = m.treasureId || 0;
+                tidInput.placeholder = 'ID';
+                tidInput.title = 'Treasure map ID';
+                tidInput.disabled = typeSelect.value !== 'treasure';
+                tidInput.onchange = function() {
+                    modularWorld.maps[i].treasureId = parseInt(this.value) || 0;
+                    saveToStorage();
+                    markFsUnsaved();
+                };
+                typeSelect._tidInput = tidInput;
+                var origOnChange = typeSelect.onchange;
+                typeSelect.onchange = function() {
+                    this._tidInput.disabled = this.value !== 'treasure';
+                    if (this.value !== 'treasure') this._tidInput.value = 0;
+                    origOnChange.call(this);
                 };
 
                 var label = document.createElement('span');
@@ -2686,6 +2834,7 @@
                     if (i === currentMapIndex) mapData.name = val;
                     label.textContent = val;
                     renderModularTabs();
+                    markFsUnsaved();
                 };
 
                 var upBtn = document.createElement('button');
@@ -2715,6 +2864,8 @@
 
                 row.appendChild(handle);
                 row.appendChild(cpCheckbox);
+                row.appendChild(typeSelect);
+                row.appendChild(tidInput);
                 row.appendChild(label);
                 row.appendChild(nameInput);
                 row.appendChild(upBtn);
@@ -2768,6 +2919,31 @@
 
                 list.appendChild(row);
             });
+            updateFsSaveIndicator();
+        }
+
+        function markFsUnsaved() {
+            var ind = document.getElementById('fs-saved-indicator');
+            if (ind) {
+                ind.textContent = 'Unsaved changes';
+                ind.style.color = '#aa8800';
+            }
+        }
+
+        function updateFsSaveIndicator() {
+            var ind = document.getElementById('fs-saved-indicator');
+            if (ind) {
+                ind.textContent = '✓ Saved';
+                ind.style.color = '#4a7a4a';
+            }
+        }
+
+        function saveWorldSettings() {
+            if (!modularWorld || !mapData) return;
+            modularWorld.name = document.getElementById('fs-world-name').value.trim() || modularWorld.name;
+            saveToStorage();
+            updateFsSaveIndicator();
+            document.getElementById('status').textContent = 'Saved world settings';
         }
 
         function fsApplyChanges() {
