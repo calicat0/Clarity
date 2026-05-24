@@ -645,7 +645,6 @@
                     <p class="subtitle">A MINIMAL TILE-BASED PLATFORMER</p>
                     <div class="divider"></div>
                     <button class="btn-start" onclick="hideMenu()">Start Game</button>
-                    <button id="menu-continue-btn" class="btn-start" onclick="hideMenu();continueGame();" style="display:none;margin-top:8px;background:#665500;">Continue</button>
                     <p style="margin-top:18px;font-size:11px;color:#555;">
                         <label style="color:#666;cursor:pointer;">
                             <input type="checkbox" id="chk-splash" onchange="saveSetting('showSplash', this.checked)" checked style="vertical-align:middle;">
@@ -822,15 +821,11 @@
 
         function updateContinueButton() {
             var btn = document.getElementById('continue-btn');
-            var menuBtn = document.getElementById('menu-continue-btn');
             var last = loadLastPlayed();
             var show = last && game.modularData && last.worldName === game.modularData.name;
             if (btn) {
                 btn.style.display = show ? '' : 'none';
                 if (show) btn.textContent = 'Continue (Lv ' + (last.levelIndex + 1) + ')';
-            }
-            if (menuBtn) {
-                menuBtn.style.display = show ? '' : 'none';
             }
         }
 
