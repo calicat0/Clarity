@@ -168,6 +168,8 @@
             display: block;
             border: 1px solid #333;
             box-shadow: 0 0 16px 2px rgba(0,0,0,0.8);
+            transform-origin: center center;
+            transition: transform 0.15s ease;
             image-rendering: auto;
         }
         #game-area.zen #canvas {
@@ -580,7 +582,7 @@
             <button id="zen-btn" onclick="toggleZen()" title="Toggle zen mode">◉ Zen</button>
             <span class="sep"></span>
             <label for="zoom-slider" style="font-size:11px;">Zoom</label>
-            <input type="range" id="zoom-slider" min="100" max="300" value="100">
+            <input type="range" id="zoom-slider" min="25" max="300" value="100">
             <span id="zoom-label">100%</span>
         </div>
     </div>
@@ -708,19 +710,15 @@
             ctx    = canvas.getContext('2d');
 
         var dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
-        var BASE_W = 400;
-        var BASE_H = 400;
-        var VP_W = BASE_W;
-        var VP_H = BASE_H;
+        var VP_W = 400;
+        var VP_H = 400;
         var zoom = 1;
-        var canvasCSSW = BASE_W;
-        var canvasCSSH = BASE_H;
 
         function resizeCanvas() {
-            canvas.width = Math.round(canvasCSSW * dpr);
-            canvas.height = Math.round(canvasCSSH * dpr);
-            canvas.style.width = canvasCSSW + 'px';
-            canvas.style.height = canvasCSSH + 'px';
+            canvas.width = VP_W * dpr;
+            canvas.height = VP_H * dpr;
+            canvas.style.width = VP_W + 'px';
+            canvas.style.height = VP_H + 'px';
         }
         resizeCanvas();
 
@@ -1204,55 +1202,26 @@
         var zoomLabel = document.getElementById('zoom-label');
 
         function setZoom(percent) {
-            zoom = Math.max(1, Math.min(3, percent / 100));
-            fitZoom();
+            zoom = percent / 100;
+            canvas.style.transform = 'scale(' + zoom + ')';
+            zoomLabel.textContent = percent + '%';
+            document.getElementById('info-zoom').textContent = percent + '%';
         }
 
         zoomSlider.addEventListener('input', function () {
             setZoom(parseInt(this.value));
         });
 
-        function snapVP(vpTarget, canvasSize) {
-            var totalPixels = 16 * canvasSize;
-            var best = vpTarget;
-            var bestDiff = Infinity;
-            var lo = Math.max(50, 1);
-            var hi = Math.min(2000, totalPixels);
-            for (var d = lo; d <= hi; d++) {
-                if (totalPixels % d === 0) {
-                    var diff = Math.abs(d - vpTarget);
-                    if (diff < bestDiff) {
-                        bestDiff = diff;
-                        best = d;
-                    }
-                }
-            }
-            return best;
-        }
-
         function fitZoom() {
             var gameArea = document.getElementById('game-area');
             var padding = 12;
             var availW = gameArea.clientWidth - padding * 2;
             var availH = gameArea.clientHeight - padding * 2;
-
-            var scale = Math.min(availW / BASE_W, availH / BASE_H, 3);
-
-            canvasCSSW = Math.max(100, Math.round(BASE_W * scale));
-            canvasCSSH = Math.max(100, Math.round(BASE_H * scale));
-
-            resizeCanvas();
-
-            var vpTarget = Math.round(BASE_W / zoom);
-            VP_W = Math.max(50, Math.min(2000, snapVP(vpTarget, canvasCSSW)));
-            VP_H = VP_W;
-            game.set_viewport(VP_W, VP_H);
-
-            var actualZoom = BASE_W / VP_W;
-            var pct = Math.round(actualZoom * 100);
-            zoomLabel.textContent = pct + '%';
-            zoomSlider.value = Math.max(100, Math.min(300, pct));
-            document.getElementById('info-zoom').textContent = pct + '%';
+            var scale = Math.min(availW / VP_W, availH / VP_H);
+            var maxZoom = 3;
+            var percent = Math.round(Math.min(Math.max(scale, 0.25), maxZoom) * 100);
+            zoomSlider.value = percent;
+            setZoom(percent);
         }
 
         window.addEventListener('resize', fitZoom);
@@ -1385,7 +1354,7 @@
             }
 
             ctx.save();
-            ctx.scale(dpr * canvasCSSW / VP_W, dpr * canvasCSSH / VP_H);
+            ctx.scale(dpr, dpr);
 
             ctx.fillStyle = game.current_map ? game.current_map.background : '#1a1a1a';
             ctx.fillRect(0, 0, VP_W, VP_H);

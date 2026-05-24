@@ -177,7 +177,7 @@ loadModularData({
   {id: 0, colour: "#333", solid: 0},
   {id: 1, colour: "#888", solid: 0},
   {id: 2, colour: "#555", solid: 1, bounce: 0.35},
-  {id: 3, colour: "rgba(121, 220, 242, 0.4)", friction: {
+  {id: 3, colour: "#79DCF2", friction: {
   x: 0.9,
   y: 0.9
 }, gravity: {
