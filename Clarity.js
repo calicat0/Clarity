@@ -27,6 +27,14 @@ var Clarity = function () {
     this.tile_size      = 16;
     this.limit_viewport = false;
     this.jump_switch    = 0;
+    this.light_radius   = 8;
+    this.ambient_brightness = 0.05;
+    this.light_falloff  = 5;
+    this.light_shape    = 'circle';
+    this.light_trails   = true;
+    this.trail_fade_speed = 0.01;
+    this.trail_max_brightness = 1;
+    this._trails        = {};
     
     this.viewport = {
         x: 200,
@@ -194,7 +202,16 @@ Clarity.prototype.load_map = function (map) {
         y: 0
     };
 
+    if (map.light_radius !== undefined) this.light_radius = map.light_radius;
+    if (map.ambient_brightness !== undefined) this.ambient_brightness = map.ambient_brightness;
+    if (map.light_falloff !== undefined) this.light_falloff = map.light_falloff;
+    if (map.light_shape !== undefined) this.light_shape = map.light_shape;
+    if (map.light_trails !== undefined) this.light_trails = map.light_trails;
+    if (map.trail_fade_speed !== undefined) this.trail_fade_speed = map.trail_fade_speed;
+    if (map.trail_max_brightness !== undefined) this.trail_max_brightness = map.trail_max_brightness;
+
     this.clearTasks();
+    this.clearTrails();
     this.cancelTreasurePrompt();
 
     this.log('Successfully loaded map data.');
@@ -238,7 +255,53 @@ Clarity.prototype.get_tile = function (x, y) {
     return (this.current_map.data[y] && this.current_map.data[y][x]) ? this.current_map.data[y][x] : 0;
 };
 
-Clarity.prototype.draw_tile = function (x, y, tile, context) {
+Clarity.prototype.tileBlocksLOS = function (tile) {
+    return tile && (tile.opaque || tile.solid || tile.script === 'death');
+};
+
+Clarity.prototype.hasLineOfSight = function (x0, y0, x1, y1) {
+    var dx = Math.abs(x1 - x0);
+    var dy = Math.abs(y1 - y0);
+    var sx = x0 < x1 ? 1 : -1;
+    var sy = y0 < y1 ? 1 : -1;
+    var err = dx - dy;
+    var x = x0, y = y0;
+    var destTile = this.get_tile(x1, y1);
+    var destIsDeath = destTile && destTile.script === 'death';
+
+    while (true) {
+        if ((x !== x0 || y !== y0) && (x !== x1 || y !== y1)) {
+            var tile = this.get_tile(x, y);
+            if (this.tileBlocksLOS(tile)) {
+                if (!(destIsDeath && tile.script === 'death')) return false;
+            }
+        }
+        if (x === x1 && y === y1) return true;
+
+        var e2 = 2 * err;
+        var prevX = x, prevY = y;
+        if (e2 > -dy) { err -= dy; x += sx; }
+        if (e2 < dx) { err += dx; y += sy; }
+
+        if ((x - prevX) !== 0 && (y - prevY) !== 0) {
+            var tileH = this.get_tile(prevX + sx, prevY);
+            var tileV = this.get_tile(prevX, prevY + sy);
+            if (this.tileBlocksLOS(tileH) && this.tileBlocksLOS(tileV)) {
+                if (!(destIsDeath && tileH.script === 'death' && tileV.script === 'death')) return false;
+            }
+        }
+    }
+};
+
+Clarity.prototype.getLightDist = function (dx, dy) {
+    switch (this.light_shape) {
+        case 'square': return Math.max(Math.abs(dx), Math.abs(dy));
+        case 'diamond': return Math.abs(dx) + Math.abs(dy);
+        default: return Math.sqrt(dx * dx + dy * dy);
+    }
+};
+
+Clarity.prototype.draw_tile = function (x, y, tile, context, brightness) {
 
     if (!tile || !tile.colour) return;
 
@@ -249,9 +312,23 @@ Clarity.prototype.draw_tile = function (x, y, tile, context) {
         this.tile_size,
         this.tile_size
     );
+
+    if (brightness !== undefined && brightness < 1) {
+        context.fillStyle = 'rgba(0,0,0,' + (1 - brightness).toFixed(3) + ')';
+        context.fillRect(
+            Math.round(x),
+            Math.round(y),
+            this.tile_size,
+            this.tile_size
+        );
+    }
 };
 
 Clarity.prototype.draw_map = function (context, fore) {
+
+    var px = Math.round(this.player.loc.x / this.tile_size);
+    var py = Math.round(this.player.loc.y / this.tile_size);
+    var radius = this.light_radius;
 
     for (var y = 0; y < this.current_map.data.length; y++) {
 
@@ -266,12 +343,39 @@ Clarity.prototype.draw_map = function (context, fore) {
                 || t_y < -this.tile_size
                 || t_x > this.viewport.x
                 || t_y > this.viewport.y) continue;
+
+                var brightness = this.ambient_brightness;
+                var dx = x - px;
+                var dy = y - py;
+                var dist = this.getLightDist(dx, dy);
+
+                if (dist <= radius) {
+                    brightness = 1 - (1 - this.ambient_brightness) * Math.pow(dist / radius, this.light_falloff);
+                    if (brightness > this.ambient_brightness && !this.hasLineOfSight(px, py, x, y)) {
+                        brightness = this.ambient_brightness;
+                    }
+                }
+
+                if (this.light_trails && brightness > this.ambient_brightness) {
+                    var tKey = x + ',' + y;
+                    var trail = this._trails[tKey] || 0;
+                    if (brightness > trail) {
+                        this._trails[tKey] = Math.min(brightness, this.trail_max_brightness);
+                    }
+                }
+
+                if (this.light_trails) {
+                    var tKey = x + ',' + y;
+                    var trailVal = this._trails[tKey] || 0;
+                    if (trailVal > brightness) brightness = trailVal;
+                }
                 
                 this.draw_tile(
                     t_x,
                     t_y,
                     this.current_map.data[y][x],
-                    context
+                    context,
+                    brightness
                 );
             }
         }
@@ -512,10 +616,21 @@ Clarity.prototype.draw_player = function (context) {
     context.fill();
 };
 
+Clarity.prototype.clearTrails = function () {
+    this._trails = {};
+};
+
 Clarity.prototype.update = function () {
 
     if (!this.current_map) return;
     this.update_player();
+
+    if (this.light_trails) {
+        for (var key in this._trails) {
+            this._trails[key] -= this.trail_fade_speed;
+            if (this._trails[key] <= 0) delete this._trails[key];
+        }
+    }
 
     if (this._treasurePromptActive && this._treasurePromptTileX !== null && this.tile_size) {
         var px = Math.round(this.player.loc.x / this.tile_size);

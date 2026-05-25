@@ -1088,6 +1088,7 @@
                 </div>
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-solid"> Solid</label>
+                    <label><input type="checkbox" id="custom-opaque"> Opaque</label>
                     <label>Bounce: <input type="number" id="custom-bounce" step="0.05" value="0" style="width:48px"></label>
                     <label><input type="checkbox" id="custom-jump"> Jump-thru</label>
                     <label><input type="checkbox" id="custom-fore"> Foreground</label>
@@ -1710,6 +1711,7 @@
             var name = document.getElementById('custom-name').value.trim();
             var colour = document.getElementById('custom-colour').value;
             var solid = document.getElementById('custom-solid').checked ? 1 : 0;
+            var opaque = document.getElementById('custom-opaque').checked ? 1 : 0;
             var bounce = parseFloat(document.getElementById('custom-bounce').value) || 0;
             var jump = document.getElementById('custom-jump').checked ? 1 : 0;
             var fore = document.getElementById('custom-fore').checked ? 1 : 0;
@@ -1732,7 +1734,8 @@
             function buildKey(id) {
                 var k = {
                     id: id, colour: colour, name: name,
-                    solid: solid, bounce: bounce || undefined,
+                    solid: solid, opaque: opaque || undefined,
+                    bounce: bounce || undefined,
                     jump: jump || undefined, fore: fore || undefined,
                     friction: (fx || fy) ? {x: fx, y: fy} : undefined,
                     gravity: (gx || gy) ? {x: gx, y: gy} : undefined,
@@ -1994,7 +1997,7 @@
                 {id: 6, colour: '#666', solid: 1, bounce: 0},
                 {id: 7, colour: '#73C6FA', solid: 0, script: 'change_colour'},
                 {id: 8, colour: '#FADF73', solid: 0, script: 'next_level'},
-                {id: 9, colour: '#C93232', solid: 0, script: 'death'},
+                {id: 9, colour: '#C93232', solid: 0, script: 'death', opaque: 1},
                 {id: 10, colour: '#555', solid: 1},
                 {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
                 {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'}
@@ -2147,7 +2150,7 @@
                 {id: 6, colour: '#666', solid: 1, bounce: 0},
                 {id: 7, colour: '#73C6FA', solid: 0, script: 'change_colour'},
                 {id: 8, colour: '#FADF73', solid: 0, script: 'next_level'},
-                {id: 9, colour: '#C93232', solid: 0, script: 'death'},
+                {id: 9, colour: '#C93232', solid: 0, script: 'death', opaque: 1},
                 {id: 10, colour: '#555', solid: 1},
                 {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
                 {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'}
@@ -2174,6 +2177,13 @@
                 vel_limit: {x: 2, y: 16},
                 movement_speed: {jump: 6, left: 0.3, right: 0.3},
                 player: {x: 2, y: 2, colour: '#FF9900'},
+                light_radius: 8,
+                ambient_brightness: 0.05,
+                light_falloff: 5,
+                light_shape: 'circle',
+                light_trails: true,
+                trail_fade_speed: 0.01,
+                trail_max_brightness: 1,
                 scripts: {
                     change_colour: "this.player.colour = \"#\"+(Math.random()*0xFFFFFF<<0).toString(16);",
                     next_level: "alert(\"You win!\");this.load_map(this.source_map);",
@@ -2252,6 +2262,7 @@
                     '<span class="tile-id">' + key.id + '</span>'
                     + '<input type="color" value="' + key.colour.replace(/"/g, '&quot;') + '" onchange="updateTileColour(' + key.id + ', this.value)" title="Pick colour">'
                     + '<label><input type="checkbox" ' + (key.solid ? 'checked' : '') + ' onchange="updateTileProp(' + key.id + ',\'solid\',this.checked?1:0)">S</label>'
+                    + '<label><input type="checkbox" ' + (key.opaque ? 'checked' : '') + ' onchange="updateTileProp(' + key.id + ',\'opaque\',this.checked?1:0)">O</label>'
                     + '<label title="Bounce"><input type="number" step="0.05" value="' + (key.bounce || 0) + '" onchange="updateTileProp(' + key.id + ',\'bounce\',parseFloat(this.value)||0)" style="width:38px">B</label>'
                     + '<label><input type="checkbox" ' + (key.jump ? 'checked' : '') + ' onchange="updateTileProp(' + key.id + ',\'jump\',this.checked?1:0)">J</label>'
                     + '<span class="tile-name">' + (key.name || defaultTileNames[i] || '') + '</span>';
@@ -2310,6 +2321,26 @@
                 + '<button id="pick-spawn-btn" onclick="pickSpawn()" style="font-size:10px;padding:1px 6px;cursor:pointer;">Pick</button>'
                 + '<label>colour<input type="color" value="' + esc(m.player && m.player.colour) + '" onchange="setMapProp(\'player\',\'colour\',this.value)"></label>'
                 + '<input type="text" value="' + esc(m.player && m.player.colour) + '" onchange="setMapProp(\'player\',\'colour\',this.value)" style="width:56px;font-size:10px;padding:1px 3px">'
+                + '</div>'
+                + '<div class="prop-row" style="margin-top:4px;padding-top:4px;border-top:1px solid #333;">'
+                + '<span style="color:#aaa;font-size:11px;">Lighting</span>'
+                + '</div>'
+                + '<div class="prop-row">'
+                + '<label>Shape: <select onchange="setDirectProp(\'light_shape\',this.value)" style="font-size:10px;padding:1px 2px;">'
+                + '<option value="circle"' + (m.light_shape === 'circle' ? ' selected' : '') + '>Circle</option>'
+                + '<option value="square"' + (m.light_shape === 'square' ? ' selected' : '') + '>Square</option>'
+                + '<option value="diamond"' + (m.light_shape === 'diamond' ? ' selected' : '') + '>Diamond</option>'
+                + '</select></label>'
+                + '<label>Radius <input type="number" step="1" min="1" max="30" value="' + (m.light_radius || 8) + '" onchange="setDirectProp(\'light_radius\',parseFloat(this.value)||8)" style="width:36px"></label>'
+                + '</div>'
+                + '<div class="prop-row">'
+                + '<label>Ambient <input type="number" step="0.01" min="0" max="1" value="' + (m.ambient_brightness !== undefined ? m.ambient_brightness : 0.05) + '" onchange="setDirectProp(\'ambient_brightness\',Math.min(1,Math.max(0,parseFloat(this.value)||0)))" style="width:44px"></label>'
+                + '<label>Falloff <input type="number" step="0.1" min="0.1" max="5" value="' + (m.light_falloff !== undefined ? m.light_falloff : 5) + '" onchange="setDirectProp(\'light_falloff\',Math.max(0.1,parseFloat(this.value)||5))" style="width:44px"></label>'
+                + '</div>'
+                + '<div class="prop-row">'
+                + '<label><input type="checkbox" ' + (m.light_trails !== false ? 'checked' : '') + ' onchange="setDirectProp(\'light_trails\',this.checked)"> Trails</label>'
++ '<label>Fade <input type="number" step="0.01" min="0.01" max="0.5" value="' + (m.trail_fade_speed !== undefined ? m.trail_fade_speed : 0.01) + '" onchange="setDirectProp(\'trail_fade_speed\',Math.max(0.01,parseFloat(this.value)||0.01))" style="width:44px"></label>'
++ '<label>Max <input type="number" step="0.05" min="0.05" max="1" value="' + (m.trail_max_brightness !== undefined ? m.trail_max_brightness : 1) + '" onchange="setDirectProp(\'trail_max_brightness\',Math.min(1,Math.max(0.05,parseFloat(this.value)||1)))" style="width:44px"></label>'
                 + '</div>';
         }
 
@@ -2317,6 +2348,12 @@
             if (!mapData) return;
             if (!mapData[section]) mapData[section] = {};
             mapData[section][key] = val;
+            pushHistory();
+        }
+
+        function setDirectProp(key, val) {
+            if (!mapData) return;
+            mapData[key] = val;
             pushHistory();
         }
 

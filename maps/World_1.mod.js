@@ -78,7 +78,7 @@ loadModularData({
   {id: 9, colour: "#C93232", solid: 0, script: "death"},
   {id: 10, colour: "#555", solid: 1},
   {id: 11, colour: "#0FF", solid: 0, script: "unlock"},
-  {id: 12, colour: "#e87373", name: "Lava background", solid: 0}
+  {id: 12, colour: "#e87373", name: "Lava background", solid: 0, script: "death", opaque: 1}
 ], data: [
   [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
   [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 2],
@@ -149,7 +149,7 @@ loadModularData({
   {id: 9, colour: "#C93232", solid: 0, script: "death"},
   {id: 10, colour: "#555", solid: 1},
   {id: 11, colour: "#0FF", solid: 0, script: "unlock"},
-  {id: 12, colour: "#fb7474", name: "Lava fake", solid: 0}
+  {id: 12, colour: "#fb7474", name: "Lava fake", solid: 0, script: "death", opaque: 1}
 ], data: [
   [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 6, 6, 2],
   [2, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 9, 1, 1, 1, 1, 1, 1, 1, 2],

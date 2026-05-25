@@ -113,6 +113,36 @@
             cursor: pointer;
             border: none;
         }
+        .menu-page input[type="range"] {
+            width: 120px;
+            vertical-align: middle;
+            background: #222;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            border: none;
+            outline: none;
+        }
+        .menu-page input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #888;
+            cursor: pointer;
+            border: none;
+        }
+        .menu-page input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #888;
+            cursor: pointer;
+            border: none;
+        }
         #topbar input[type="range"]::-moz-range-thumb {
             width: 14px;
             height: 14px;
@@ -222,6 +252,86 @@
             border-bottom: 1px solid #333;
             margin-bottom: 4px;
             user-select: none;
+        }
+        .side-section .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 0;
+            font-size: 11px;
+            gap: 4px;
+        }
+        .side-section .control-row .ctrl-label {
+            color: #888;
+            flex-shrink: 0;
+            font-size: 11px;
+        }
+        .side-section .control-row .ctrl-label.on {
+            color: #aaa;
+        }
+        .side-section .control-row .ctrl-val {
+            color: #ddd;
+            min-width: 28px;
+            text-align: right;
+            font-size: 11px;
+        }
+        .side-section input[type="range"] {
+            width: 70px;
+            flex-shrink: 0;
+            vertical-align: middle;
+            background: #111;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 3px;
+            border-radius: 2px;
+            border: none;
+            outline: none;
+        }
+        .side-section input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #888;
+            cursor: pointer;
+            border: none;
+        }
+        .side-section input[type="range"]::-moz-range-thumb {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #888;
+            cursor: pointer;
+            border: none;
+        }
+        .side-section select {
+            font-family: monospace;
+            font-size: 10px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 1px 2px;
+            cursor: pointer;
+            width: 72px;
+            flex-shrink: 0;
+        }
+        .side-section .ctrl-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 0;
+            cursor: pointer;
+            color: #aaa;
+            font-size: 11px;
+        }
+        .side-section .ctrl-checkbox input[type="checkbox"] {
+            margin: 0;
+            flex-shrink: 0;
+        }
+        .side-section .trail-sub {
+            padding-left: 18px;
         }
         .side-section .info-row {
             display: flex;
@@ -679,7 +789,7 @@
                     <h1>Appearance</h1>
                     <div class="divider"></div>
                     <div style="text-align:left;max-width:380px;margin:0 auto;font-size:12px;">
-                        <p style="margin-bottom:10px;color:#aaa;">Side Panel</p>
+                        <p style="margin-bottom:10px;color:#aaa;border-top:1px solid #333;padding-top:12px;">Side Panel</p>
                         <label style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#ccc;cursor:pointer;">
                             <input type="checkbox" id="chk-show-player" onchange="saveSetting('showPlayer', this.checked)">
                             Show player info
@@ -1281,6 +1391,8 @@
             if (playerSec) playerSec.classList.toggle('hidden', !showPlayer);
             if (perfSec) perfSec.classList.toggle('hidden', !showPerf);
         }
+
+
 
         /* ---- Menu ---- */
 

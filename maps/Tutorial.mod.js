@@ -192,12 +192,12 @@ loadModularData({
   {id: 9, colour: "#C93232", solid: 0, script: "death"},
   {id: 10, colour: "#555", solid: 1},
   {id: 11, colour: "#0FF", solid: 0, script: "unlock"},
-  {id: 12, colour: "#f98585", name: "lava bg", solid: 0},
-  {id: 13, colour: "#6c1919", name: "under lava 2", solid: 0, script: "death"},
+  {id: 12, colour: "#f98585", name: "lava bg", solid: 0, opaque: 1},
+  {id: 13, colour: "#6c1919", name: "under lava 2", solid: 0, script: "death", opaque: 1},
   {id: 14, colour: "#696969", name: "bg 2", solid: 0},
   {id: 15, colour: "#ff00ff", name: "Info", solid: 0, isTask: true, taskId: 1, taskType: "timeout", taskMessage: "Congratulations! You have completed the tutorial.", taskOneTime: true, taskDuration: 5, script: "combined_15"},
   {id: 16, colour: "#d4a800", name: "Secret exit", solid: 0, isTreasureExit: true, treasureTargetId: 1, script: "treasure_exit_16"},
-  {id: 17, colour: "#e24646", name: "fake lava", solid: 0},
+  {id: 17, colour: "#e24646", name: "fake lava", solid: 0, opaque: 1},
   {id: 18, colour: "#666666", name: "fake wall", solid: 0}
 ], data: [
   [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
