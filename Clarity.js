@@ -256,7 +256,7 @@ Clarity.prototype.get_tile = function (x, y) {
 };
 
 Clarity.prototype.tileBlocksLOS = function (tile) {
-    return tile && (tile.opaque || tile.solid || tile.script === 'death');
+    return tile && !tile.lightPasses && (tile.opaque || tile.solid || tile.script === 'death');
 };
 
 Clarity.prototype.hasLineOfSight = function (x0, y0, x1, y1) {
@@ -268,15 +268,29 @@ Clarity.prototype.hasLineOfSight = function (x0, y0, x1, y1) {
     var x = x0, y = y0;
     var destTile = this.get_tile(x1, y1);
     var destIsDeath = destTile && destTile.script === 'death';
+    var passedDeath = false;
+    var brokeChain = false;
 
     while (true) {
         if ((x !== x0 || y !== y0) && (x !== x1 || y !== y1)) {
             var tile = this.get_tile(x, y);
+
+            if (passedDeath && tile && tile.script !== 'death') {
+                brokeChain = true;
+            }
+
             if (this.tileBlocksLOS(tile)) {
-                if (!(destIsDeath && tile.script === 'death')) return false;
+                if (tile.script === 'death' && !brokeChain && (destIsDeath || (destTile && destTile.solid))) {
+                    passedDeath = true;
+                } else {
+                    return false;
+                }
             }
         }
-        if (x === x1 && y === y1) return true;
+        if (x === x1 && y === y1) {
+            if (brokeChain) return false;
+            return true;
+        }
 
         var e2 = 2 * err;
         var prevX = x, prevY = y;
@@ -287,7 +301,10 @@ Clarity.prototype.hasLineOfSight = function (x0, y0, x1, y1) {
             var tileH = this.get_tile(prevX + sx, prevY);
             var tileV = this.get_tile(prevX, prevY + sy);
             if (this.tileBlocksLOS(tileH) && this.tileBlocksLOS(tileV)) {
-                if (!(destIsDeath && tileH.script === 'death' && tileV.script === 'death')) return false;
+                if (!(tileH.script === 'death' && tileV.script === 'death' && !brokeChain && (destIsDeath || (destTile && destTile.solid)))) return false;
+            }
+            if (passedDeath && ((tileH && tileH.script && tileH.script !== 'death') || (tileV && tileV.script && tileV.script !== 'death'))) {
+                brokeChain = true;
             }
         }
     }

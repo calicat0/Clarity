@@ -1089,6 +1089,7 @@
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-solid"> Solid</label>
                     <label><input type="checkbox" id="custom-opaque"> Opaque</label>
+                    <label><input type="checkbox" id="custom-light-passes"> Light passes</label>
                     <label>Bounce: <input type="number" id="custom-bounce" step="0.05" value="0" style="width:48px"></label>
                     <label><input type="checkbox" id="custom-jump"> Jump-thru</label>
                     <label><input type="checkbox" id="custom-fore"> Foreground</label>
@@ -1239,7 +1240,7 @@
         var TILE = 28;
         var painting = false;
         var pickingSpawn = false;
-        var defaultTileNames = ['air', 'floor', 'brick', 'water', 'platform', 'bounce', 'wall', 'shift', 'goal', 'lava', 'block', 'key', 'checkpoint'];
+        var defaultTileNames = ['air', 'floor', 'brick', 'water', 'platform', 'bounce', 'wall', 'shift', 'goal', 'lava', 'block', 'key', 'checkpoint', 'lava glass'];
         var undoStack = [];
         var undoIndex = -1;
         var undoMax = 100;
@@ -1342,6 +1343,8 @@
             document.getElementById('custom-name').value = '';
             document.getElementById('custom-colour').value = '#FF0000';
             document.getElementById('custom-solid').checked = false;
+            document.getElementById('custom-opaque').checked = false;
+            document.getElementById('custom-light-passes').checked = false;
             document.getElementById('custom-bounce').value = '0';
             document.getElementById('custom-jump').checked = false;
             document.getElementById('custom-fore').checked = false;
@@ -1395,6 +1398,8 @@
             document.getElementById('custom-name').value = key.name || '';
             document.getElementById('custom-colour').value = key.colour || '#FF0000';
             document.getElementById('custom-solid').checked = !!key.solid;
+            document.getElementById('custom-opaque').checked = !!key.opaque;
+            document.getElementById('custom-light-passes').checked = !!key.lightPasses;
             document.getElementById('custom-bounce').value = key.bounce || '0';
             document.getElementById('custom-jump').checked = !!key.jump;
             document.getElementById('custom-fore').checked = !!key.fore;
@@ -1734,7 +1739,6 @@
             function buildKey(id) {
                 var k = {
                     id: id, colour: colour, name: name,
-                    solid: solid, opaque: opaque || undefined,
                     bounce: bounce || undefined,
                     jump: jump || undefined, fore: fore || undefined,
                     friction: (fx || fy) ? {x: fx, y: fy} : undefined,
@@ -1760,6 +1764,10 @@
                 key = buildKey(getNextTileId());
                 mapData.keys.push(key);
             }
+
+            key.solid = solid;
+            key.opaque = opaque;
+            key.lightPasses = document.getElementById('custom-light-passes').checked || undefined;
 
             var scriptParts = [];
 
@@ -2000,7 +2008,8 @@
                 {id: 9, colour: '#C93232', solid: 0, script: 'death', opaque: 1},
                 {id: 10, colour: '#555', solid: 1},
                 {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
-                {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'}
+                {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'},
+                {id: 13, colour: '#C93232', solid: 0, script: 'death', lightPasses: true}
             ];
             var cols = 20, rows = 15;
             var data = [];
@@ -2153,7 +2162,8 @@
                 {id: 9, colour: '#C93232', solid: 0, script: 'death', opaque: 1},
                 {id: 10, colour: '#555', solid: 1},
                 {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
-                {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'}
+                {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'},
+                {id: 13, colour: '#C93232', solid: 0, script: 'death', lightPasses: true}
             ];
             var data = [];
             for (var y = 0; y < rows; y++) {
