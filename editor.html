@@ -332,6 +332,43 @@
         #side-reopen:hover {
             background: #333;
         }
+        #toolbar .tool-btn {
+            padding: 3px 8px;
+            font-size: 11px;
+        }
+        #toolbar .tool-btn.active {
+            background: #555;
+            color: #fff;
+            border-color: #aaa;
+        }
+        #toolbar .tool-label {
+            font-size: 11px;
+            color: #888;
+            margin-right: 2px;
+        }
+        #brush-size-input {
+            width: 32px;
+            font-size: 11px;
+            text-align: center;
+            padding: 1px 2px;
+        }
+        .selection-overlay {
+            position: absolute;
+            pointer-events: none;
+            border: 2px dashed rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.08);
+            z-index: 5;
+        }
+        #shortcuts-hint {
+            font-size: 10px;
+            color: #555;
+            margin-left: 4px;
+            cursor: default;
+            white-space: nowrap;
+        }
+        #shortcuts-hint:hover {
+            color: #888;
+        }
 
         /* New-map dialog */
         #modal-overlay {
@@ -909,8 +946,18 @@
         <span class="sep"></span>
         <button onclick="showFileSettings()">World/Map/File settings</button>
         <span class="sep"></span>
-        <button id="eraser-btn" onclick="toggleEraser()">Eraser</button>
+        <button id="pencil-btn" class="tool-btn active" onclick="setTool('pencil')" title="Pencil (P)">Pencil</button>
+        <button id="rect-btn" class="tool-btn" onclick="setTool('rect')" title="Rectangle (R)">Rect</button>
+        <button id="line-btn" class="tool-btn" onclick="setTool('line')" title="Line (L)">Line</button>
+        <button id="fill-btn" class="tool-btn" onclick="setTool('fill')" title="Flood Fill (F)">Fill</button>
+        <button id="select-btn" class="tool-btn" onclick="setTool('select')" title="Select (V)">Select</button>
+        <button id="eraser-btn" class="tool-btn" onclick="setTool('eraser')" title="Eraser (E)">Eraser</button>
         <button id="xray-btn" onclick="toggleXray()">X-Ray</button>
+        <span class="sep"></span>
+        <span class="tool-label">Brush:</span>
+        <input type="number" id="brush-size-input" value="1" min="1" max="9" onchange="brushSize=Math.max(1,Math.min(9,parseInt(this.value)||1));updateBrushLabel();" title="Brush size ( [ to decrease, ] to increase )">
+        <span id="brush-size-label" style="font-size:11px;color:#888;margin-right:6px;">1×1</span>
+        <span id="shortcuts-hint" title="Keyboard shortcuts: P=draw, R=rect, L=line, F=fill, V=select, E=eraser, G=xray, B=brush size, [/]=brush +/-, Ctrl+Z=undo, Ctrl+Shift+Z=redo, Del=clear selection">Shortcuts</span>
         <span class="sep"></span>
         <button onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onclick="redo()" id="redo-btn" disabled title="Redo (Ctrl+Shift+Z)">↪ Redo</button>
@@ -921,6 +968,8 @@
         </span>
         <span class="sep"></span>
         <button id="side-toggle" onclick="toggleSidePanel()">☰ Props</button>
+        <span class="sep"></span>
+        <button onclick="validateMap()" title="Check map for errors">Validate</button>
         <span class="sep"></span>
         <button onclick="openPlaytest()">▶ Playtest</button>
         <span id="status"></span>
@@ -1236,7 +1285,6 @@
         var currentMapIndex = 0;
         var _addMapMode = false;
         var selectedId = 0;
-        var eraserOn = false;
         var TILE = 28;
         var painting = false;
         var pickingSpawn = false;
@@ -1247,6 +1295,18 @@
         var skipHistory = false;
         var painted = false;
         var xrayOn = false;
+
+        // Tool system
+        var currentTool = 'pencil';
+        var brushSize = 1;
+        var toolStart = null;
+        var toolPrev = null;
+
+        // Selection
+        var selectStart = null;
+        var selectEnd = null;
+        var hasSelection = false;
+        var clipboardData = null;
 
         function pushHistory() {
             if (skipHistory || !mapData) return;
@@ -1922,8 +1982,15 @@
                 undoStack = [];
                 undoIndex = -1;
                 selectedId = 0;
-                eraserOn = false;
-                document.getElementById('eraser-btn').classList.remove('active');
+                setTool('pencil');
+                brushSize = 1;
+                updateBrushLabel();
+                hasSelection = false;
+                selectStart = null;
+                selectEnd = null;
+                toolStart = null;
+                toolPrev = null;
+                painting = false;
             }
             document.getElementById('status').textContent = 'Loaded: ' + (data.name || 'unnamed')
                 + ' | ' + data.data[0].length + 'x' + data.data.length + ' | ' + data.keys.length + ' tiles';
@@ -2075,15 +2142,241 @@
             reader.readAsText(file);
         }
 
-        function toggleEraser() {
-            eraserOn = !eraserOn;
-            document.getElementById('eraser-btn').classList.toggle('active', eraserOn);
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(function(b) { b.classList.remove('active'); });
+            var btn = document.getElementById(tool + '-btn');
+            if (btn) btn.classList.add('active');
+            if (tool !== 'select') { hasSelection = false; selectStart = null; selectEnd = null; renderGrid(); }
+            var cursor = 'crosshair';
+            if (tool === 'select') cursor = 'default';
+            document.getElementById('grid').style.cursor = cursor;
+            document.getElementById('status').textContent = 'Tool: ' + tool.charAt(0).toUpperCase() + tool.slice(1);
+        }
+
+        function updateBrushLabel() {
+            document.getElementById('brush-size-label').textContent = brushSize + '\u00D7' + brushSize;
+            document.getElementById('brush-size-input').value = brushSize;
         }
 
         function toggleXray() {
             xrayOn = !xrayOn;
             document.getElementById('xray-btn').classList.toggle('active', xrayOn);
             renderGrid();
+        }
+
+        function isInBounds(x, y) {
+            return mapData && y >= 0 && y < mapData.data.length && x >= 0 && x < mapData.data[y].length;
+        }
+
+        function getTilesForRect(x1, y1, x2, y2) {
+            var tiles = [];
+            var minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+            var minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+            for (var y = minY; y <= maxY; y++) {
+                for (var x = minX; x <= maxX; x++) {
+                    if (isInBounds(x, y)) tiles.push({x: x, y: y});
+                }
+            }
+            return tiles;
+        }
+
+        function executeRect(start, end) {
+            if (!mapData) return;
+            var id = currentTool === 'eraser' ? 0 : selectedId;
+            var tiles = getTilesForRect(start.x, start.y, end.x, end.y);
+            tiles.forEach(function(p) { mapData.data[p.y][p.x] = id; });
+            renderGrid();
+            pushHistory();
+        }
+
+        function executeLine(start, end) {
+            if (!mapData) return;
+            var id = currentTool === 'eraser' ? 0 : selectedId;
+            var x0 = start.x, y0 = start.y, x1 = end.x, y1 = end.y;
+            var dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+            var sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+            var err = dx + dy, e2;
+            while (true) {
+                if (isInBounds(x0, y0)) mapData.data[y0][x0] = id;
+                if (x0 === x1 && y0 === y1) break;
+                e2 = 2 * err;
+                if (e2 >= dy) { err += dy; x0 += sx; }
+                if (e2 <= dx) { err += dx; y0 += sy; }
+            }
+            renderGrid();
+            pushHistory();
+        }
+
+        function executeFloodFill(pos) {
+            if (!mapData || !isInBounds(pos.x, pos.y)) return;
+            var targetId = mapData.data[pos.y][pos.x];
+            var replaceId = currentTool === 'eraser' ? 0 : selectedId;
+            if (targetId === replaceId) return;
+            var rows = mapData.data.length, cols = mapData.data[0].length;
+            var stack = [{x: pos.x, y: pos.y}];
+            var visited = {};
+            while (stack.length > 0) {
+                var p = stack.pop();
+                var key = p.x + ',' + p.y;
+                if (visited[key]) continue;
+                visited[key] = true;
+                if (p.y < 0 || p.y >= rows || p.x < 0 || p.x >= cols) continue;
+                if (mapData.data[p.y][p.x] !== targetId) continue;
+                mapData.data[p.y][p.x] = replaceId;
+                stack.push({x: p.x + 1, y: p.y});
+                stack.push({x: p.x - 1, y: p.y});
+                stack.push({x: p.x, y: p.y + 1});
+                stack.push({x: p.x, y: p.y - 1});
+            }
+            renderGrid();
+            pushHistory();
+        }
+
+        /* ---- Selection ---- */
+
+        function getSelectionRect() {
+            if (!selectStart || !selectEnd) return null;
+            return {
+                x: Math.min(selectStart.x, selectEnd.x),
+                y: Math.min(selectStart.y, selectEnd.y),
+                w: Math.abs(selectEnd.x - selectStart.x) + 1,
+                h: Math.abs(selectEnd.y - selectStart.y) + 1
+            };
+        }
+
+        function copySelection() {
+            var r = getSelectionRect();
+            if (!r || r.w < 1 || r.h < 1) return;
+            clipboardData = [];
+            for (var y = 0; y < r.h; y++) {
+                var row = [];
+                for (var x = 0; x < r.w; x++) {
+                    var gx = r.x + x, gy = r.y + y;
+                    row.push(isInBounds(gx, gy) ? mapData.data[gy][gx] : 0);
+                }
+                clipboardData.push(row);
+            }
+            document.getElementById('status').textContent = 'Copied ' + r.w + '\u00D7' + r.h + ' area';
+        }
+
+        function cutSelection() {
+            copySelection();
+            deleteSelection();
+        }
+
+        function deleteSelection() {
+            var r = getSelectionRect();
+            if (!r) return;
+            for (var y = r.y; y < r.y + r.h; y++) {
+                for (var x = r.x; x < r.x + r.w; x++) {
+                    if (isInBounds(x, y)) mapData.data[y][x] = 0;
+                }
+            }
+            hasSelection = false;
+            selectStart = null;
+            selectEnd = null;
+            renderGrid();
+            pushHistory();
+        }
+
+        function pasteSelection() {
+            if (!clipboardData || !toolPrev) return;
+            var pos = toolPrev;
+            for (var y = 0; y < clipboardData.length; y++) {
+                for (var x = 0; x < clipboardData[y].length; x++) {
+                    var gx = pos.x + x, gy = pos.y + y;
+                    if (isInBounds(gx, gy)) mapData.data[gy][gx] = clipboardData[y][x];
+                }
+            }
+            renderGrid();
+            pushHistory();
+            document.getElementById('status').textContent = 'Pasted ' + clipboardData[0].length + '\u00D7' + clipboardData.length + ' area';
+        }
+
+        /* ---- Map Validation ---- */
+
+        function validateMap() {
+            if (!mapData) return;
+            var warnings = [];
+            var errors = [];
+
+            // Check player spawn
+            if (!mapData.player || mapData.player.x === undefined || mapData.player.y === undefined) {
+                errors.push('No player spawn position set.');
+            } else {
+                var px = mapData.player.x, py = mapData.player.y;
+                if (!isInBounds(px, py)) errors.push('Player spawn is outside the map bounds.');
+                else {
+                    var spawnTile = mapData.keys.find(function(k) { return k.id === mapData.data[py][px]; });
+                    if (spawnTile && spawnTile.solid) warnings.push('Player spawn is on a solid tile.');
+                }
+            }
+
+            // Check goal
+            var hasGoal = mapData.keys.some(function(k) { return k.script && (k.script === 'next_level' || mapData.scripts && mapData.scripts[k.script] && mapData.scripts[k.script].indexOf('next_level') !== -1); });
+            if (!hasGoal) {
+                var hasGoalScript = mapData.scripts && Object.keys(mapData.scripts).some(function(s) { return mapData.scripts[s].indexOf('next_level') !== -1; });
+                if (!hasGoalScript) warnings.push('No goal (next_level) tile found. Players cannot complete the map.');
+            }
+
+            // Duplicate tile IDs
+            var ids = {};
+            mapData.keys.forEach(function(k) {
+                if (ids[k.id]) errors.push('Duplicate tile ID: ' + k.id);
+                ids[k.id] = true;
+            });
+
+            // Unused tile IDs
+            var usedIds = {};
+            mapData.data.forEach(function(row) { row.forEach(function(id) { if (id > 0) usedIds[id] = true; }); });
+            mapData.keys.forEach(function(k) {
+                if (k.id > 0 && !usedIds[k.id] && k.id !== 0) warnings.push('Tile "' + (k.name || 'ID ' + k.id) + '" is defined but never placed on the map.');
+            });
+
+            // Placeholder IDs (tiles in data but not in keys)
+            var keyIds = {};
+            mapData.keys.forEach(function(k) { keyIds[k.id] = true; });
+            mapData.data.forEach(function(row, y) {
+                row.forEach(function(id, x) {
+                    if (id > 0 && !keyIds[id]) errors.push('Tile ID ' + id + ' at (' + x + ',' + y + ') is not defined in the tile palette.');
+                });
+            });
+
+            // Missing key/door pairs
+            var doorIds = {};
+            mapData.keys.forEach(function(k) { if (k.isDoor) doorIds[k.id] = k; });
+            mapData.keys.forEach(function(k) {
+                if (k.isKey && k.unlocks > 0 && !doorIds[k.unlocks]) warnings.push('Key "' + (k.name || 'ID ' + k.id) + '" unlocks door ID ' + k.unlocks + ' but no such door exists.');
+            });
+            var keyLocks = {};
+            mapData.keys.forEach(function(k) { if (k.isKey && k.unlocks > 0) keyLocks[k.unlocks] = k; });
+            mapData.keys.forEach(function(k) {
+                if (k.isDoor && k.lockKey > 0 && !keyLocks[k.lockKey] && !mapData.keys.some(function(x) { return x.isKey && x.unlocks === k.id; })) {
+                    warnings.push('Door "' + (k.name || 'ID ' + k.id) + '" is locked by key ID ' + k.lockKey + ' but no such key exists.');
+                }
+            });
+
+            // Treasure maps with missing target
+            mapData.keys.forEach(function(k) {
+                if (k.isTreasureExit && (!k.treasureTargetId || k.treasureTargetId < 1)) {
+                    warnings.push('Treasure exit "' + (k.name || 'ID ' + k.id) + '" has no treasure target ID set.');
+                }
+            });
+
+            // Script errors
+            mapData.keys.forEach(function(k) {
+                if (k.script && k.script !== 'death' && mapData.scripts && typeof mapData.scripts[k.script] !== 'string') {
+                    warnings.push('Tile "' + (k.name || 'ID ' + k.id) + '" references script "' + k.script + '" which is not defined.');
+                }
+            });
+
+            var msg = '';
+            if (errors.length > 0) msg += 'Errors:\n  - ' + errors.join('\n  - ');
+            if (warnings.length > 0) msg += 'Warnings:\n  - ' + warnings.join('\n  - ');
+            if (errors.length === 0 && warnings.length === 0) msg = 'Validation passed! No issues found.';
+            alert(msg);
+            document.getElementById('status').textContent = 'Validation: ' + errors.length + ' errors, ' + warnings.length + ' warnings';
         }
 
         function toggleTaskFields() {
@@ -2585,6 +2878,7 @@
                 ctx.lineTo(sx, sy + 6);
                 ctx.stroke();
             }
+            if (hasSelection) drawSelectionOverlay();
         }
 
         function getGridPos(e) {
@@ -2598,15 +2892,32 @@
 
         function paintAt(pos) {
             if (!mapData) return;
-            if (pos.y < 0 || pos.y >= mapData.data.length) return;
-            var row = mapData.data[pos.y];
-            if (pos.x < 0 || pos.x >= row.length) return;
-            var id = eraserOn ? 0 : selectedId;
-            mapData.data[pos.y][pos.x] = id;
+            var id = currentTool === 'eraser' ? 0 : selectedId;
+            var half = Math.floor(brushSize / 2);
+            for (var dy = 0; dy < brushSize; dy++) {
+                for (var dx = 0; dx < brushSize; dx++) {
+                    var cx = pos.x - half + dx;
+                    var cy = pos.y - half + dy;
+                    if (cy < 0 || cy >= mapData.data.length) continue;
+                    if (cx < 0 || cx >= mapData.data[cy].length) continue;
+                    mapData.data[cy][cx] = id;
+                }
+            }
             var ctx = document.getElementById('grid').getContext('2d');
-            var x = pos.x,
-                y = pos.y;
-            if (id !== 0) {
+            // Re-render the affected area
+            var minX = Math.max(0, pos.x - half);
+            var maxX = Math.min(mapData.data[0].length - 1, pos.x + half);
+            var minY = Math.max(0, pos.y - half);
+            var maxY = Math.min(mapData.data.length - 1, pos.y + half);
+            for (var y = minY; y <= maxY; y++) {
+                for (var x = minX; x <= maxX; x++) {
+                    drawTile(ctx, x, y, mapData.data[y][x]);
+                }
+            }
+        }
+
+        function drawTile(ctx, x, y, id) {
+            if (id !== undefined && id !== null && id !== 0) {
                 var key = mapData.keys.find(function(k) { return k.id === id; });
                 if (key && key.colour) {
                     ctx.fillStyle = key.colour;
@@ -2636,7 +2947,9 @@
             document.getElementById('grid').style.cursor = pickingSpawn ? 'crosshair' : '';
         }
 
-        document.getElementById('grid').addEventListener('mousedown', function(e) {
+        /* ---- Canvas event handlers ---- */
+
+        function handleGridMouseDown(e) {
             if (pickingSpawn) {
                 var pos = getGridPos(e);
                 if (!mapData.player) mapData.player = {};
@@ -2651,26 +2964,190 @@
                 pushHistory();
                 return;
             }
-            if (e.button === 2) { eraserOn = true; document.getElementById('eraser-btn').classList.add('active'); }
-            painting = true;
-            painted = false;
-            paintAt(getGridPos(e));
-            painted = true;
-        });
-        document.getElementById('grid').addEventListener('mousemove', function(e) {
-            if (painting) { paintAt(getGridPos(e)); painted = true; }
-        });
-        document.getElementById('grid').addEventListener('mouseup', function() {
+            if (e.button === 2) { setTool('eraser'); }
+
+            toolPrev = getGridPos(e);
+
+            switch (currentTool) {
+                case 'pencil':
+                case 'eraser':
+                    painting = true;
+                    painted = false;
+                    paintAt(toolPrev);
+                    painted = true;
+                    break;
+
+                case 'rect':
+                case 'line':
+                    toolStart = {x: toolPrev.x, y: toolPrev.y};
+                    painting = true;
+                    painted = false;
+                    break;
+
+                case 'fill':
+                    executeFloodFill(toolPrev);
+                    break;
+
+                case 'select':
+                    selectStart = {x: toolPrev.x, y: toolPrev.y};
+                    selectEnd = null;
+                    hasSelection = false;
+                    painting = true;
+                    break;
+            }
+        }
+
+        function handleGridMouseMove(e) {
+            var pos = getGridPos(e);
+            toolPrev = pos;
+
+            if (!painting) {
+                // Update cursor for brush preview
+                return;
+            }
+
+            switch (currentTool) {
+                case 'pencil':
+                case 'eraser':
+                    paintAt(pos);
+                    painted = true;
+                    break;
+
+                case 'rect':
+                    renderGrid();
+                    if (toolStart) drawPreviewRect(toolStart, pos);
+                    break;
+
+                case 'line':
+                    renderGrid();
+                    if (toolStart) drawPreviewLine(toolStart, pos);
+                    break;
+
+                case 'select':
+                    selectEnd = {x: pos.x, y: pos.y};
+                    hasSelection = true;
+                    renderGrid();
+                    break;
+            }
+        }
+
+        function handleGridMouseUp(e) {
+            if (painting && (currentTool === 'rect' || currentTool === 'line') && toolStart && toolPrev) {
+                if (currentTool === 'rect') executeRect(toolStart, toolPrev);
+                else if (currentTool === 'line') executeLine(toolStart, toolPrev);
+            }
             painting = false;
             if (painted) pushHistory();
             painted = false;
-        });
-        document.getElementById('grid').addEventListener('mouseleave', function() {
+
+            if (currentTool === 'select' && hasSelection) {
+                drawSelectionOverlay();
+            }
+        }
+
+        function handleGridMouseLeave(e) {
+            if (painting && (currentTool === 'pencil' || currentTool === 'eraser')) {
+                if (painted) pushHistory();
+            }
             painting = false;
-            if (painted) pushHistory();
             painted = false;
-        });
+        }
+
+        /* ---- Preview drawing ---- */
+
+        function drawPreviewRect(start, end) {
+            var ctx = document.getElementById('grid').getContext('2d');
+            var x = Math.min(start.x, end.x) * TILE;
+            var y = Math.min(start.y, end.y) * TILE;
+            var w = (Math.abs(end.x - start.x) + 1) * TILE;
+            var h = (Math.abs(end.y - start.y) + 1) * TILE;
+            ctx.strokeStyle = 'rgba(255,255,100,0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(x, y, w, h);
+            ctx.fillStyle = 'rgba(255,255,100,0.1)';
+            ctx.fillRect(x, y, w, h);
+            ctx.setLineDash([]);
+        }
+
+        function drawPreviewLine(start, end) {
+            var ctx = document.getElementById('grid').getContext('2d');
+            var x0 = start.x * TILE + TILE / 2, y0 = start.y * TILE + TILE / 2;
+            var x1 = end.x * TILE + TILE / 2, y1 = end.y * TILE + TILE / 2;
+            ctx.strokeStyle = 'rgba(255,255,100,0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y1);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // Draw circles at endpoints
+            ctx.fillStyle = 'rgba(255,255,100,0.5)';
+            ctx.beginPath();
+            ctx.arc(x0, y0, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x1, y1, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawSelectionOverlay() {
+            var r = getSelectionRect();
+            if (!r) return;
+            var ctx = document.getElementById('grid').getContext('2d');
+            var x = r.x * TILE, y = r.y * TILE, w = r.w * TILE, h = r.h * TILE;
+            ctx.fillStyle = 'rgba(100,150,255,0.15)';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = 'rgba(100,150,255,0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(x, y, w, h);
+            ctx.setLineDash([]);
+        }
+
+        document.getElementById('grid').addEventListener('mousedown', handleGridMouseDown);
+        document.getElementById('grid').addEventListener('mousemove', handleGridMouseMove);
+        document.getElementById('grid').addEventListener('mouseup', handleGridMouseUp);
+        document.getElementById('grid').addEventListener('mouseleave', handleGridMouseLeave);
         document.getElementById('grid').addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+        /* ---- Scroll-wheel zoom ---- */
+        document.getElementById('grid-wrap').addEventListener('wheel', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                var delta = e.deltaY > 0 ? -2 : 2;
+                var newVal = Math.max(8, Math.min(64, TILE + delta));
+                setZoom(newVal);
+                var range = document.querySelector('#grid-controls input[type="range"]');
+                if (range) range.value = newVal;
+            }
+        });
+
+        /* ---- Middle-click pan ---- */
+        var panning = false, panStart = null, panScroll = null;
+        document.getElementById('grid-wrap').addEventListener('mousedown', function(e) {
+            if (e.button === 1) {
+                e.preventDefault();
+                panning = true;
+                panStart = {x: e.clientX, y: e.clientY};
+                panScroll = {x: this.scrollLeft, y: this.scrollTop};
+                this.style.cursor = 'grabbing';
+            }
+        });
+        document.addEventListener('mousemove', function(e) {
+            if (panning && panStart) {
+                var wrap = document.getElementById('grid-wrap');
+                wrap.scrollLeft = panScroll.x - (e.clientX - panStart.x);
+                wrap.scrollTop = panScroll.y - (e.clientY - panStart.y);
+            }
+        });
+        document.addEventListener('mouseup', function(e) {
+            if (e.button === 1 && panning) {
+                panning = false;
+                document.getElementById('grid-wrap').style.cursor = '';
+            }
+        });
 
         function addRow() {
             if (!mapData) return;
@@ -3232,16 +3709,72 @@
 
         document.addEventListener('keydown', function(e) {
             if (playtestActive) return;
+            var tag = document.activeElement && document.activeElement.tagName;
+            var isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === 'z' && !e.shiftKey) {
-                    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+                    if (isInput) return;
                     e.preventDefault();
                     undo();
+                    return;
                 } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
-                    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+                    if (isInput) return;
                     e.preventDefault();
                     redo();
+                    return;
+                } else if (e.key === 'c') {
+                    if (!isInput) { copySelection(); }
+                    return;
+                } else if (e.key === 'x') {
+                    if (!isInput) { cutSelection(); }
+                    return;
+                } else if (e.key === 'v') {
+                    if (!isInput) { pasteSelection(); }
+                    return;
+                } else if (e.key === 's') {
+                    e.preventDefault();
+                    if (!isInput) saveMap();
+                    return;
                 }
+                return;
+            }
+
+            if (isInput) return;
+
+            switch (e.key) {
+                case 'p': case 'P': setTool('pencil'); e.preventDefault(); break;
+                case 'r': case 'R': setTool('rect'); e.preventDefault(); break;
+                case 'l': case 'L': setTool('line'); e.preventDefault(); break;
+                case 'f': case 'F': setTool('fill'); e.preventDefault(); break;
+                case 'v': case 'V': setTool('select'); e.preventDefault(); break;
+                case 'e': case 'E': setTool('eraser'); e.preventDefault(); break;
+                case 'g': case 'G': toggleXray(); e.preventDefault(); break;
+                case 'b': case 'B':
+                    brushSize = Math.min(9, brushSize + 1);
+                    updateBrushLabel();
+                    e.preventDefault();
+                    break;
+                case '[':
+                    brushSize = Math.max(1, brushSize - 1);
+                    updateBrushLabel();
+                    e.preventDefault();
+                    break;
+                case ']':
+                    brushSize = Math.min(9, brushSize + 1);
+                    updateBrushLabel();
+                    e.preventDefault();
+                    break;
+                case 'Delete': case 'Backspace':
+                    if (hasSelection) { deleteSelection(); e.preventDefault(); }
+                    break;
+                case 'Escape':
+                    if (hasSelection) {
+                        hasSelection = false; selectStart = null; selectEnd = null;
+                        renderGrid();
+                        e.preventDefault();
+                    }
+                    break;
             }
         });
 
