@@ -1168,6 +1168,7 @@
                     <label>Delay: <input type="number" id="custom-fade-delay" step="0.1" value="0.5" min="0.1" max="10" style="width:48px"> s</label>
                     <label>Fade: <input type="number" id="custom-fade-duration" step="0.1" value="0.4" min="0.1" max="5" style="width:48px"> s</label>
                     <label>Respawn: <input type="number" id="custom-fade-respawn" step="0.5" value="3" min="0.5" max="30" style="width:48px"> s</label>
+                    <label><input type="checkbox" id="custom-group-fade"> Group Fade (connect same-ID)</label>
                 </div>
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-is-treasure-exit" onchange="toggleTreasureExitFields()"> Is Treasure Exit</label>
@@ -1420,6 +1421,7 @@
             document.getElementById('custom-fade-delay').value = '0.5';
             document.getElementById('custom-fade-duration').value = '0.4';
             document.getElementById('custom-fade-respawn').value = '3';
+            document.getElementById('custom-group-fade').checked = false;
             toggleFadeFields();
             document.getElementById('custom-opaque').checked = false;
             document.getElementById('custom-light-passes').checked = false;
@@ -1502,6 +1504,7 @@
             document.getElementById('custom-fade-delay').value = key.fadeDelay || '0.5';
             document.getElementById('custom-fade-duration').value = key.fadeDuration || '0.4';
             document.getElementById('custom-fade-respawn').value = key.fadeRespawn || '3';
+            document.getElementById('custom-group-fade').checked = !!key.groupFade;
             toggleFadeFields();
             document.getElementById('custom-is-treasure-exit').checked = !!key.isTreasureExit;
             document.getElementById('custom-treasure-id').value = key.treasureTargetId || '0';
@@ -1898,11 +1901,13 @@
                 key.fadeDelay = parseFloat(document.getElementById('custom-fade-delay').value) || 0.5;
                 key.fadeDuration = parseFloat(document.getElementById('custom-fade-duration').value) || 0.4;
                 key.fadeRespawn = parseFloat(document.getElementById('custom-fade-respawn').value) || 3;
+                key.groupFade = document.getElementById('custom-group-fade').checked ? 1 : undefined;
             } else {
                 delete key.fade;
                 delete key.fadeDelay;
                 delete key.fadeDuration;
                 delete key.fadeRespawn;
+                delete key.groupFade;
             }
 
             // Checkpoint
@@ -2114,7 +2119,8 @@
                 {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
                 {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'},
                 {id: 13, colour: '#C93232', solid: 0, script: 'death', lightPasses: true},
-                {id: 14, colour: '#555', solid: 1, bounce: 0.35, name: 'Fade Floor', fade: 1, fadeDelay: 0.5, fadeRespawn: 3, fadeDuration: 0.4, themeLinked: 'fade'}
+                {id: 14, colour: '#555', solid: 1, bounce: 0.35, name: 'Fade Floor', fade: 1, fadeDelay: 0.5, fadeRespawn: 3, fadeDuration: 0.4, themeLinked: 'fade'},
+                {id: 15, colour: '#555', solid: 1, bounce: 0.35, name: 'Group Fade Floor', fade: 1, groupFade: 1, fadeDelay: 0.5, fadeRespawn: 3, fadeDuration: 0.4, themeLinked: 'fade'}
             ];
             var cols = 20, rows = 15;
             var data = [];
@@ -2495,7 +2501,8 @@
                 {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
                 {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'},
                 {id: 13, colour: '#C93232', solid: 0, script: 'death', lightPasses: true},
-                {id: 14, colour: '#555', solid: 1, bounce: 0.35, name: 'Fade Floor', fade: 1, fadeDelay: 0.5, fadeRespawn: 3, fadeDuration: 0.4, themeLinked: 'fade'}
+                {id: 14, colour: '#555', solid: 1, bounce: 0.35, name: 'Fade Floor', fade: 1, fadeDelay: 0.5, fadeRespawn: 3, fadeDuration: 0.4, themeLinked: 'fade'},
+                {id: 15, colour: '#555', solid: 1, bounce: 0.35, name: 'Group Fade Floor', fade: 1, groupFade: 1, fadeDelay: 0.5, fadeRespawn: 3, fadeDuration: 0.4, themeLinked: 'fade'}
             ];
             var data = [];
             for (var y = 0; y < rows; y++) {

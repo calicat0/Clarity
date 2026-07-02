@@ -522,16 +522,10 @@ Clarity.prototype.move_player = function () {
             this.player.can_jump = true;
             
             if (bottom1 && bottom1.fade) {
-                var fbKey = x_near1 + ',' + t_y_down;
-                if (!this._fadingBlocks[fbKey]) {
-                    this._fadingBlocks[fbKey] = { timer: 0, state: 'active', delay: bottom1.fadeDelay || 0.5, respawn: bottom1.fadeRespawn || 3, fadeDuration: bottom1.fadeDuration || 0.4 };
-                }
+                this.activateFade(x_near1, t_y_down, bottom1);
             }
             if (bottom2 && bottom2.fade) {
-                var fbKey = x_near2 + ',' + t_y_down;
-                if (!this._fadingBlocks[fbKey]) {
-                    this._fadingBlocks[fbKey] = { timer: 0, state: 'active', delay: bottom2.fadeDelay || 0.5, respawn: bottom2.fadeRespawn || 3, fadeDuration: bottom2.fadeDuration || 0.4 };
-                }
+                this.activateFade(x_near2, t_y_down, bottom2);
             }
         }
         
@@ -726,6 +720,44 @@ Clarity.prototype.update = function () {
                 if (id2) tile.colour = id2.colour;
                 delete this._fadingBlocks[fbKey];
             }
+        }
+    }
+};
+
+Clarity.prototype.findConnectedTiles = function (tx, ty, tileId) {
+    var visited = {};
+    var result = [];
+    var queue = [{x: tx, y: ty}];
+    while (queue.length) {
+        var p = queue.shift();
+        var key = p.x + ',' + p.y;
+        if (visited[key]) continue;
+        visited[key] = true;
+        var tile = this.current_map.data[p.y] ? this.current_map.data[p.y][p.x] : null;
+        if (!tile || tile.id !== tileId) continue;
+        result.push({x: p.x, y: p.y});
+        queue.push({x: p.x - 1, y: p.y});
+        queue.push({x: p.x + 1, y: p.y});
+        queue.push({x: p.x, y: p.y - 1});
+        queue.push({x: p.x, y: p.y + 1});
+    }
+    return result;
+};
+
+Clarity.prototype.activateFade = function (tx, ty, tile) {
+    if (tile.groupFade) {
+        var _this = this;
+        var group = this.findConnectedTiles(tx, ty, tile.id);
+        group.forEach(function (p) {
+            var gKey = p.x + ',' + p.y;
+            if (!_this._fadingBlocks[gKey]) {
+                _this._fadingBlocks[gKey] = { timer: 0, state: 'active', delay: tile.fadeDelay || 0.5, respawn: tile.fadeRespawn || 3, fadeDuration: tile.fadeDuration || 0.4 };
+            }
+        });
+    } else {
+        var fbKey = tx + ',' + ty;
+        if (!this._fadingBlocks[fbKey]) {
+            this._fadingBlocks[fbKey] = { timer: 0, state: 'active', delay: tile.fadeDelay || 0.5, respawn: tile.fadeRespawn || 3, fadeDuration: tile.fadeDuration || 0.4 };
         }
     }
 };
