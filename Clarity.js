@@ -34,6 +34,7 @@ var Clarity = function () {
     this.light_trails   = true;
     this.trail_fade_speed = 0.01;
     this.trail_max_brightness = 1;
+    this.camera_mode    = 'follow';
     this._trails        = {};
     
     this.viewport = {
@@ -533,59 +534,79 @@ Clarity.prototype.move_player = function () {
     
     // adjust camera
 
-    var c_x = Math.round(this.player.loc.x - this.viewport.x/2);
-    var c_y = Math.round(this.player.loc.y - this.viewport.y/2);
-    var x_dif = Math.abs(c_x - this.camera.x);
-    var y_dif = Math.abs(c_y - this.camera.y);
-    
-    if(x_dif > 5) {
+    if (this.camera_mode === 'locked') {
+
+        this.camera.x = this.player.loc.x + this.tile_size / 2 - this.viewport.x / 2;
+        this.camera.y = this.player.loc.y + this.tile_size / 2 - this.viewport.y / 2;
+
+        if (this.limit_viewport) {
+            this.camera.x = Math.min(
+                this.current_map.width_p - this.viewport.x + this.tile_size,
+                Math.max(0, this.camera.x)
+            );
+            this.camera.y = Math.min(
+                this.current_map.height_p - this.viewport.y + this.tile_size,
+                Math.max(0, this.camera.y)
+            );
+        }
+
+    } else {
+
+        var c_x = Math.round(this.player.loc.x - this.viewport.x/2);
+        var c_y = Math.round(this.player.loc.y - this.viewport.y/2);
+        var x_dif = Math.abs(c_x - this.camera.x);
+        var y_dif = Math.abs(c_y - this.camera.y);
         
-        var mag = Math.round(Math.max(1, x_dif * 0.1));
-    
-        if(c_x != this.camera.x) {
+        if(x_dif > 5) {
             
-            this.camera.x += c_x > this.camera.x ? mag : -mag;
-            
-            if(this.limit_viewport) {
+            var mag = Math.round(Math.max(1, x_dif * 0.1));
+        
+            if(c_x != this.camera.x) {
                 
-                this.camera.x = 
-                    Math.min(
-                        this.current_map.width_p - this.viewport.x + this.tile_size,
-                        this.camera.x
-                    );
+                this.camera.x += c_x > this.camera.x ? mag : -mag;
                 
-                this.camera.x = 
-                    Math.max(
-                        0,
-                        this.camera.x
-                    );
+                if(this.limit_viewport) {
+                    
+                    this.camera.x = 
+                        Math.min(
+                            this.current_map.width_p - this.viewport.x + this.tile_size,
+                            this.camera.x
+                        );
+                    
+                    this.camera.x = 
+                        Math.max(
+                            0,
+                            this.camera.x
+                        );
+                }
             }
         }
-    }
-    
-    if(y_dif > 5) {
         
-        var mag = Math.round(Math.max(1, y_dif * 0.1));
-        
-        if(c_y != this.camera.y) {
+        if(y_dif > 5) {
             
-            this.camera.y += c_y > this.camera.y ? mag : -mag;
-        
-            if(this.limit_viewport) {
+            var mag = Math.round(Math.max(1, y_dif * 0.1));
+            
+            if(c_y != this.camera.y) {
                 
-                this.camera.y = 
-                    Math.min(
-                        this.current_map.height_p - this.viewport.y + this.tile_size,
-                        this.camera.y
-                    );
-                
-                this.camera.y = 
-                    Math.max(
-                        0,
-                        this.camera.y
-                    );
+                this.camera.y += c_y > this.camera.y ? mag : -mag;
+            
+                if(this.limit_viewport) {
+                    
+                    this.camera.y = 
+                        Math.min(
+                            this.current_map.height_p - this.viewport.y + this.tile_size,
+                            this.camera.y
+                        );
+                    
+                    this.camera.y = 
+                        Math.max(
+                            0,
+                            this.camera.y
+                        );
+                }
             }
         }
+
     }
     
     if(this.last_tile != tile.id && tile.script) {

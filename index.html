@@ -56,6 +56,31 @@
             line-height: 1;
             color: #ddd;
         }
+        input[type="radio"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            margin: 0;
+            border: 1px solid #555;
+            background: #111;
+            cursor: pointer;
+            vertical-align: middle;
+            flex-shrink: 0;
+            border-radius: 50%;
+            position: relative;
+        }
+        input[type="radio"]:checked {
+            background: #555;
+            border-color: #888;
+        }
+        input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            background: #ddd;
+        }
 
         #topbar {
             display: flex;
@@ -583,7 +608,7 @@
         }
 
         /* ---- Progress Reset ---- */
-        .clear-progress-btn {
+        .clear-progress-btn, .danger-btn {
             display: block;
             width: 100%;
             padding: 8px 12px;
@@ -595,7 +620,7 @@
             margin-top: 8px;
             text-align: center;
         }
-        .clear-progress-btn:hover {
+        .clear-progress-btn:hover, .danger-btn:hover {
             background: #5a2a2a;
         }
         .reset-level-btn {
@@ -747,6 +772,7 @@
                 <div class="menu-nav-item active" data-page="splash">Menu</div>
                 <div class="menu-nav-item" data-page="about">About</div>
                 <div class="menu-nav-item" data-page="settings">Settings</div>
+                <div class="menu-nav-item" data-page="camera">Camera</div>
                 <div class="menu-nav-item" data-page="appearance">Appearance</div>
             </div>
             <div id="menu-content">
@@ -798,6 +824,23 @@
                             <input type="checkbox" id="chk-show-perf" onchange="saveSetting('showPerf', this.checked)">
                             Show performance
                         </label>
+                    </div>
+                </div>
+                <div id="page-camera" class="menu-page">
+                    <h1>Camera</h1>
+                    <div class="divider"></div>
+                    <div style="text-align:left;max-width:380px;margin:0 auto;font-size:12px;">
+                        <p style="margin-bottom:10px;color:#aaa;">Mode</p>
+                        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#ccc;cursor:pointer;">
+                            <input type="radio" name="cameraMode" value="follow" onchange="saveSetting('cameraMode', 'follow')">
+                            Follow &mdash; smooth camera with slight delay
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;color:#ccc;cursor:pointer;">
+                            <input type="radio" name="cameraMode" value="locked" onchange="saveSetting('cameraMode', 'locked')">
+                            Locked &mdash; perfectly centered on player
+                        </label>
+                        <p style="margin-bottom:10px;color:#aaa;margin-top:20px;border-top:1px solid #333;padding-top:14px;">Reset</p>
+                        <button class="danger-btn" onclick="confirmResetSettings()">Reset All Settings to Defaults</button>
                     </div>
                 </div>
             </div>
@@ -852,13 +895,38 @@
             return ret;
         };
 
+        function applyCameraMode() {
+            var s = loadSettings();
+            if (s.hasOwnProperty('cameraMode')) {
+                game.camera_mode = s.cameraMode;
+            } else {
+                game.camera_mode = 'follow';
+            }
+            var radios = document.getElementsByName('cameraMode');
+            for (var ri = 0; ri < radios.length; ri++) {
+                radios[ri].checked = (radios[ri].value === game.camera_mode);
+            }
+        }
+
+        function applyLockViewport() {
+            var s = loadSettings();
+            if (s.hasOwnProperty('lockViewport')) {
+                game.limit_viewport = !!s.lockViewport;
+                document.getElementById('viewport').checked = !!s.lockViewport;
+            } else {
+                game.limit_viewport = true;
+                document.getElementById('viewport').checked = true;
+            }
+        }
+
         var _origLoadMap = game.load_map.bind(game);
         game.load_map = function (map) {
             var ret = _origLoadMap(JSON.parse(JSON.stringify(map)));
             updateLevelInfo();
             updateSidePanel();
             updateLevelInfoPanel();
-            game.limit_viewport = document.getElementById('viewport').checked;
+            applyLockViewport();
+            applyCameraMode();
             return ret;
         };
 
@@ -874,7 +942,8 @@
                 updateLevelInfoPanel();
                 updateContinueButton();
             }
-            game.limit_viewport = document.getElementById('viewport').checked;
+            applyLockViewport();
+            applyCameraMode();
             return ret;
         };
 
@@ -1114,7 +1183,8 @@
             var name = mapData.name || 'Level ' + (index + 1);
             showConfirmDialog(
                 'Warp to <strong>' + name + '</strong>?',
-                function() { warpToLevel(index); }
+                function() { warpToLevel(index); },
+                'Warp'
             );
         }
 
@@ -1165,14 +1235,15 @@
             document.body.appendChild(overlay);
         }
 
-        function showConfirmDialog(message, onConfirm) {
+        function showConfirmDialog(message, onConfirm, confirmLabel) {
+            if (confirmLabel === undefined) confirmLabel = 'Confirm';
             var overlay = document.createElement('div');
             overlay.className = 'confirm-overlay';
             overlay.innerHTML =
                 '<div class="confirm-box">' +
                 '<p>' + message + '</p>' +
                 '<div class="confirm-actions">' +
-                '<button class="confirm-danger">Warp</button>' +
+                '<button class="confirm-danger">' + confirmLabel + '</button>' +
                 '<button class="confirm-cancel">Cancel</button>' +
                 '</div></div>';
             overlay.querySelector('.confirm-danger').onclick = function() {
@@ -1199,7 +1270,8 @@
         function confirmClearAllProgress() {
             showConfirmDialog(
                 'This will erase all discovered levels across all worlds.<br>Levels with built-in checkpoints will still be accessible.',
-                clearAllProgress
+                clearAllProgress,
+                'Clear'
             );
         }
 
@@ -1366,6 +1438,13 @@
                 if (vp) vp.checked = !!value;
                 game.limit_viewport = !!value;
             }
+            if (key === 'cameraMode') {
+                game.camera_mode = value;
+                var radios = document.getElementsByName('cameraMode');
+                for (var ri = 0; ri < radios.length; ri++) {
+                    radios[ri].checked = (radios[ri].value === value);
+                }
+            }
             applySidePanelSettings();
         }
 
@@ -1403,21 +1482,39 @@
         applySetting('showPlayer', 'chk-show-player');
         applySetting('showPerf', 'chk-show-perf');
         applySidePanelSettings();
-
-        var initSettings = loadSettings();
-        if (initSettings.hasOwnProperty('lockViewport')) {
-            document.getElementById('viewport').checked = !!initSettings.lockViewport;
-            game.limit_viewport = !!initSettings.lockViewport;
-        } else {
-            document.getElementById('viewport').checked = true;
-            game.limit_viewport = true;
-        }
+        applyLockViewport();
+        applyCameraMode();
 
         var settings = loadSettings();
         if (settings.showSplash === false) {
             menuOverlay.classList.add('hidden');
         } else {
             menuOverlay.classList.remove('hidden');
+        }
+
+        function confirmResetSettings() {
+            showConfirmDialog(
+                'Reset all settings to their defaults?<br><span style="color:#888;font-size:11px;">This cannot be undone.</span>',
+                resetSettings,
+                'Reset'
+            );
+        }
+
+        function resetSettings() {
+            try {
+                localStorage.removeItem('clarity-settings');
+            } catch (e) {}
+            applyLockViewport();
+            applyCameraMode();
+            var splashEl = document.getElementById('chk-splash');
+            var splashEl2 = document.getElementById('chk-splash-settings');
+            if (splashEl) splashEl.checked = true;
+            if (splashEl2) splashEl2.checked = true;
+            var playerEl = document.getElementById('chk-show-player');
+            var perfEl = document.getElementById('chk-show-perf');
+            if (playerEl) playerEl.checked = false;
+            if (perfEl) perfEl.checked = false;
+            applySidePanelSettings();
         }
 
         function showMenu() {
