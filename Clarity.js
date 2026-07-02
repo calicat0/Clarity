@@ -77,6 +77,7 @@ var Clarity = function () {
     this._treasurePromptTileX = null;
     this._treasurePromptTileY = null;
     this.onTreasurePromptDismiss = null;
+    this._fadingBlocks = {};
 
     window.onkeydown = this.keydown.bind(this);
     window.onkeyup   = this.keyup.bind(this);
@@ -213,6 +214,7 @@ Clarity.prototype.load_map = function (map) {
     this.clearTasks();
     this.clearTrails();
     this.cancelTreasurePrompt();
+    this._fadingBlocks = {};
 
     this.log('Successfully loaded map data.');
 
@@ -518,6 +520,19 @@ Clarity.prototype.move_player = function () {
             
             this.player.on_floor = true;
             this.player.can_jump = true;
+            
+            if (bottom1 && bottom1.fade) {
+                var fbKey = x_near1 + ',' + t_y_down;
+                if (!this._fadingBlocks[fbKey]) {
+                    this._fadingBlocks[fbKey] = { timer: 0, state: 'active', delay: bottom1.fadeDelay || 0.5, respawn: bottom1.fadeRespawn || 3, fadeDuration: bottom1.fadeDuration || 0.4 };
+                }
+            }
+            if (bottom2 && bottom2.fade) {
+                var fbKey = x_near2 + ',' + t_y_down;
+                if (!this._fadingBlocks[fbKey]) {
+                    this._fadingBlocks[fbKey] = { timer: 0, state: 'active', delay: bottom2.fadeDelay || 0.5, respawn: bottom2.fadeRespawn || 3, fadeDuration: bottom2.fadeDuration || 0.4 };
+                }
+            }
         }
         
     }
@@ -662,6 +677,85 @@ Clarity.prototype.update = function () {
             }
         }
     }
+
+    for (var fbKey in this._fadingBlocks) {
+        var fb = this._fadingBlocks[fbKey];
+        fb.timer += this.dt / 60;
+
+        var parts = fbKey.split(',');
+        var tx = parseInt(parts[0]);
+        var ty = parseInt(parts[1]);
+        var tile = this.current_map.data[ty] ? this.current_map.data[ty][tx] : null;
+        if (!tile) continue;
+
+        if (fb.state === 'active') {
+            if (fb.timer >= fb.delay) {
+                var isShared = this.current_map.keys.some(function (k) { return k === tile; });
+                if (isShared) {
+                    var clone = {};
+                    for (var prop in tile) clone[prop] = tile[prop];
+                    this.current_map.data[ty][tx] = clone;
+                    tile = clone;
+                }
+                tile.solid = 0;
+                if (tile.bounce !== undefined) {
+                    tile._origBounce = tile.bounce;
+                    tile.bounce = 0;
+                }
+                var id1 = this.current_map.keys.find(function (k) { return k.id === 1; });
+                fb._startColour = tile.colour;
+                fb._targetColour = id1 ? id1.colour : '#888';
+                fb.state = 'fading';
+            }
+        } else if (fb.state === 'fading') {
+            var fadeElapsed = fb.timer - fb.delay;
+            var t = Math.min(1, fadeElapsed / fb.fadeDuration);
+            tile.colour = this.lerpColour(fb._startColour, fb._targetColour, t);
+            if (t >= 1) {
+                fb.timer = 0;
+                fb.state = 'gone';
+            }
+        } else if (fb.state === 'gone') {
+            if (fb.timer >= fb.respawn) {
+                if (this.playerOverlapsTile(tx, ty)) continue;
+                tile.solid = 1;
+                if (tile._origBounce !== undefined) {
+                    tile.bounce = tile._origBounce;
+                }
+                var id2 = this.current_map.keys.find(function (k) { return k.id === 2; });
+                if (id2) tile.colour = id2.colour;
+                delete this._fadingBlocks[fbKey];
+            }
+        }
+    }
+};
+
+Clarity.prototype.playerOverlapsTile = function (tx, ty) {
+    var cx = this.player.loc.x + this.tile_size / 2;
+    var cy = this.player.loc.y + this.tile_size / 2;
+    var r = this.tile_size / 2 - 1;
+    var tileLeft = tx * this.tile_size;
+    var tileRight = (tx + 1) * this.tile_size;
+    var tileTop = ty * this.tile_size;
+    var tileBottom = (ty + 1) * this.tile_size;
+    var closestX = Math.max(tileLeft, Math.min(cx, tileRight));
+    var closestY = Math.max(tileTop, Math.min(cy, tileBottom));
+    var dx = cx - closestX;
+    var dy = cy - closestY;
+    return dx * dx + dy * dy < r * r;
+};
+
+Clarity.prototype.lerpColour = function (a, b, t) {
+    if (!a || !b || a.charAt(0) !== '#' || b.charAt(0) !== '#') return t < 0.5 ? a : b;
+    if (a.length === 4) a = '#' + a[1] + a[1] + a[2] + a[2] + a[3] + a[3];
+    if (b.length === 4) b = '#' + b[1] + b[1] + b[2] + b[2] + b[3] + b[3];
+    var ar = parseInt(a.slice(1, 3), 16), ag = parseInt(a.slice(3, 5), 16), ab = parseInt(a.slice(5, 7), 16);
+    var br = parseInt(b.slice(1, 3), 16), bg = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16);
+    if (isNaN(ar)) return a;
+    var r = Math.round(ar + (br - ar) * t);
+    var g = Math.round(ag + (bg - ag) * t);
+    var bv = Math.round(ab + (bb - ab) * t);
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + bv).toString(16).slice(1);
 };
 
 Clarity.prototype.showMessage = function (text, duration) {

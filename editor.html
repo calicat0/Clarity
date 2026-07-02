@@ -1164,6 +1164,12 @@
                     <label><input type="checkbox" id="custom-is-death"> Is Death (kill player, auto non-solid)</label>
                 </div>
                 <div class="prop-row">
+                    <label><input type="checkbox" id="custom-fade" onchange="toggleFadeFields()"> Fading Platform</label>
+                    <label>Delay: <input type="number" id="custom-fade-delay" step="0.1" value="0.5" min="0.1" max="10" style="width:48px"> s</label>
+                    <label>Fade: <input type="number" id="custom-fade-duration" step="0.1" value="0.4" min="0.1" max="5" style="width:48px"> s</label>
+                    <label>Respawn: <input type="number" id="custom-fade-respawn" step="0.5" value="3" min="0.5" max="30" style="width:48px"> s</label>
+                </div>
+                <div class="prop-row">
                     <label><input type="checkbox" id="custom-is-treasure-exit" onchange="toggleTreasureExitFields()"> Is Treasure Exit</label>
                     <label>Unlocks Treasure ID: <input type="number" id="custom-treasure-id" value="0" min="0" style="width:52px"></label>
                 </div>
@@ -1395,6 +1401,13 @@
             return ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
         }
 
+        function toggleFadeFields() {
+            var checked = document.getElementById('custom-fade').checked;
+            document.getElementById('custom-fade-delay').disabled = !checked;
+            document.getElementById('custom-fade-duration').disabled = !checked;
+            document.getElementById('custom-fade-respawn').disabled = !checked;
+        }
+
         function showAddCustomDialog() {
             document.getElementById('custom-edit-id').value = '';
             document.getElementById('custom-modal-title').textContent = 'Add Custom Block';
@@ -1403,6 +1416,11 @@
             document.getElementById('custom-name').value = '';
             document.getElementById('custom-colour').value = '#FF0000';
             document.getElementById('custom-solid').checked = false;
+            document.getElementById('custom-fade').checked = false;
+            document.getElementById('custom-fade-delay').value = '0.5';
+            document.getElementById('custom-fade-duration').value = '0.4';
+            document.getElementById('custom-fade-respawn').value = '3';
+            toggleFadeFields();
             document.getElementById('custom-opaque').checked = false;
             document.getElementById('custom-light-passes').checked = false;
             document.getElementById('custom-bounce').value = '0';
@@ -1480,6 +1498,11 @@
                 document.getElementById('cc-random').checked = true;
             }
             document.getElementById('custom-is-death').checked = key.script === 'death';
+            document.getElementById('custom-fade').checked = !!key.fade;
+            document.getElementById('custom-fade-delay').value = key.fadeDelay || '0.5';
+            document.getElementById('custom-fade-duration').value = key.fadeDuration || '0.4';
+            document.getElementById('custom-fade-respawn').value = key.fadeRespawn || '3';
+            toggleFadeFields();
             document.getElementById('custom-is-treasure-exit').checked = !!key.isTreasureExit;
             document.getElementById('custom-treasure-id').value = key.treasureTargetId || '0';
             document.getElementById('custom-is-checkpoint').checked = !!key.isCheckpoint;
@@ -1868,6 +1891,20 @@
                 if (!mapData.scripts.death) mapData.scripts.death = '';
             }
 
+            // Fading Platform
+            var hasFade = document.getElementById('custom-fade').checked;
+            if (hasFade) {
+                key.fade = 1;
+                key.fadeDelay = parseFloat(document.getElementById('custom-fade-delay').value) || 0.5;
+                key.fadeDuration = parseFloat(document.getElementById('custom-fade-duration').value) || 0.4;
+                key.fadeRespawn = parseFloat(document.getElementById('custom-fade-respawn').value) || 3;
+            } else {
+                delete key.fade;
+                delete key.fadeDelay;
+                delete key.fadeDuration;
+                delete key.fadeRespawn;
+            }
+
             // Checkpoint
             if (hasCheckpoint) {
                 key.isCheckpoint = true;
@@ -2076,7 +2113,8 @@
                 {id: 10, colour: '#555', solid: 1},
                 {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
                 {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'},
-                {id: 13, colour: '#C93232', solid: 0, script: 'death', lightPasses: true}
+                {id: 13, colour: '#C93232', solid: 0, script: 'death', lightPasses: true},
+                {id: 14, colour: '#555', solid: 1, bounce: 0.35, name: 'Fade Floor', fade: 1, fadeDelay: 0.5, fadeRespawn: 3, fadeDuration: 0.4, themeLinked: 'fade'}
             ];
             var cols = 20, rows = 15;
             var data = [];
@@ -2456,7 +2494,8 @@
                 {id: 10, colour: '#555', solid: 1},
                 {id: 11, colour: '#0FF', solid: 0, script: 'unlock'},
                 {id: 12, colour: '#FFFFFF', solid: 0, isCheckpoint: true, saveDoorStates: true, oneTimeOnly: true, respawnMessage: 'Checkpoint saved!', script: 'combined_12'},
-                {id: 13, colour: '#C93232', solid: 0, script: 'death', lightPasses: true}
+                {id: 13, colour: '#C93232', solid: 0, script: 'death', lightPasses: true},
+                {id: 14, colour: '#555', solid: 1, bounce: 0.35, name: 'Fade Floor', fade: 1, fadeDelay: 0.5, fadeRespawn: 3, fadeDuration: 0.4, themeLinked: 'fade'}
             ];
             var data = [];
             for (var y = 0; y < rows; y++) {
@@ -2691,6 +2730,7 @@
             mapData.keys.forEach(function(key) {
                 if (key.themeLinked === 'door' && colors[12]) key.colour = colors[12];
                 if (key.themeLinked === 'key' && colors[13]) key.colour = colors[13];
+                if (key.themeLinked === 'fade' && colors[2]) key.colour = colors[2];
             });
             renderPaletteTiles();
             renderPaletteEditor();
