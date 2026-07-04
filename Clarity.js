@@ -79,6 +79,7 @@ var Clarity = function () {
     this._treasurePromptTileY = null;
     this.onTreasurePromptDismiss = null;
     this._fadingBlocks = {};
+    this._automationTimers = [];
 
     window.onkeydown = this.keydown.bind(this);
     window.onkeyup   = this.keyup.bind(this);
@@ -216,6 +217,10 @@ Clarity.prototype.load_map = function (map) {
     this.clearTrails();
     this.cancelTreasurePrompt();
     this._fadingBlocks = {};
+    this._automationTimers.forEach(function(t) { clearTimeout(t); });
+    this._automationTimers = [];
+
+    this.startAutomationTimers();
 
     this.log('Successfully loaded map data.');
 
@@ -609,11 +614,14 @@ Clarity.prototype.move_player = function () {
 
     }
     
-    if(this.last_tile != tile.id && tile.script) {
-        if (tile.script === "death") {
-            this.handleDeath();
-        } else {
-            eval(this.current_map.scripts[tile.script]);
+    if(this.last_tile != tile.id) {
+        var autoHandled = this.checkAutomations({ type: 'tile_step', tileId: tile.id });
+        if (!autoHandled && tile.script) {
+            if (tile.script === "death") {
+                this.handleDeath();
+            } else {
+                eval(this.current_map.scripts[tile.script]);
+            }
         }
     }
     
@@ -665,6 +673,157 @@ Clarity.prototype.draw_player = function (context) {
 
 Clarity.prototype.clearTrails = function () {
     this._trails = {};
+};
+
+Clarity.prototype.startAutomationTimers = function () {
+    if (!this.current_map || !this.current_map.automations) return;
+    var map = this.current_map;
+    var self = this;
+    map.automations.forEach(function (auto) {
+        if (auto.enabled === false) return;
+        if (auto.trigger && auto.trigger.type === 'timer') {
+            var delay = (auto.trigger.params && auto.trigger.params.delay) || 0;
+            var timer = setTimeout(function () {
+                if (auto.once) {
+                    if (!self.oneTimeTriggered) self.oneTimeTriggered = {};
+                    var key = 'auto_timer_' + auto.id;
+                    if (self.oneTimeTriggered[key]) return;
+                    self.oneTimeTriggered[key] = true;
+                }
+                self.executeAutomationActions(auto.actions);
+            }, delay * 1000);
+            self._automationTimers.push(timer);
+        }
+    });
+};
+
+Clarity.prototype.checkAutomations = function (context) {
+    if (!this.current_map || !this.current_map.automations) return false;
+    var handled = false;
+    var map = this.current_map;
+    var self = this;
+    map.automations.forEach(function (auto) {
+        if (auto.enabled === false) return;
+        if (!auto.trigger || auto.trigger.type !== context.type) return;
+        var match = false;
+        switch (context.type) {
+            case 'tile_step':
+                if (auto.trigger.params.tileId === context.tileId) {
+                    match = true;
+                    if (auto.once) {
+                        if (!self.oneTimeTriggered) self.oneTimeTriggered = {};
+                        var key = 'auto_step_' + auto.id + '_' + context.tileId;
+                        if (self.oneTimeTriggered[key]) { match = false; break; }
+                        self.oneTimeTriggered[key] = true;
+                    }
+                }
+                break;
+            case 'key_collected':
+                if (auto.trigger.params.keyId === context.keyId) {
+                    match = true;
+                    if (auto.once) {
+                        if (!self.oneTimeTriggered) self.oneTimeTriggered = {};
+                        var key = 'auto_key_' + auto.id + '_' + context.keyId;
+                        if (self.oneTimeTriggered[key]) { match = false; break; }
+                        self.oneTimeTriggered[key] = true;
+                    }
+                }
+                break;
+            case 'checkpoint':
+                if (auto.trigger.params.checkpointId === context.checkpointId) {
+                    match = true;
+                    if (auto.once) {
+                        if (!self.oneTimeTriggered) self.oneTimeTriggered = {};
+                        var key = 'auto_cp_' + auto.id + '_' + context.checkpointId;
+                        if (self.oneTimeTriggered[key]) { match = false; break; }
+                        self.oneTimeTriggered[key] = true;
+                    }
+                }
+                break;
+            case 'task_completed':
+                if (auto.trigger.params.taskId === context.taskId) {
+                    match = true;
+                    if (auto.once) {
+                        if (!self.oneTimeTriggered) self.oneTimeTriggered = {};
+                        var key = 'auto_task_' + auto.id + '_' + context.taskId;
+                        if (self.oneTimeTriggered[key]) { match = false; break; }
+                        self.oneTimeTriggered[key] = true;
+                    }
+                }
+                break;
+        }
+        if (match) {
+            self.executeAutomationActions(auto.actions);
+            handled = true;
+        }
+    });
+    return handled;
+};
+
+Clarity.prototype.executeAutomationActions = function (actions) {
+    if (!actions || !this.current_map) return;
+    var map = this.current_map;
+    var self = this;
+    actions.forEach(function (action) {
+        var p = action.params || {};
+        switch (action.type) {
+            case 'set_solid': {
+                var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                if (k) k.solid = p.value ? 1 : 0;
+                break;
+            }
+            case 'set_colour': {
+                var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                if (!k) break;
+                if (p.source === 'theme' && map.themePalette && map.themePalette[p.themeIndex] !== undefined) {
+                    k.colour = map.themePalette[p.themeIndex];
+                } else if (p.colour) {
+                    k.colour = p.colour;
+                }
+                break;
+            }
+            case 'set_opaque': {
+                var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                if (k) k.opaque = p.value ? 1 : 0;
+                break;
+            }
+            case 'set_bounce': {
+                var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                if (k) k.bounce = p.value || 0;
+                break;
+            }
+            case 'set_jump': {
+                var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                if (k) k.jump = p.value ? 1 : 0;
+                break;
+            }
+            case 'set_fore': {
+                var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                if (k) k.fore = p.value ? 1 : 0;
+                break;
+            }
+            case 'show_message': {
+                self.showMessage(p.message || '');
+                break;
+            }
+            case 'complete_task': {
+                self.completeTask(p.taskId);
+                break;
+            }
+            case 'activate_checkpoint': {
+                self.activateCheckpoint(p.checkpointId);
+                break;
+            }
+            case 'go_to_treasure': {
+                self.goToTreasure(p.treasureId);
+                break;
+            }
+            case 'set_player_colour': {
+                if (p.colour) self.player.colour = p.colour;
+                break;
+            }
+        }
+    });
 };
 
 Clarity.prototype.update = function () {
@@ -868,6 +1027,7 @@ Clarity.prototype.completeTask = function (taskId) {
         if (task.element.parentNode) task.element.parentNode.removeChild(task.element);
         delete self.tasks[taskId];
     }, 300);
+    this.checkAutomations({ type: 'task_completed', taskId: taskId });
 };
 
 Clarity.prototype.getLevelState = function () {
@@ -969,6 +1129,8 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
             }
         }
     }
+
+    this.checkAutomations({ type: 'checkpoint', checkpointId: tileId });
 };
 
 Clarity.prototype.findNextMainlineLevel = function (fromIndex) {

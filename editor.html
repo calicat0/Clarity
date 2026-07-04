@@ -2,6 +2,7 @@
 <html>
 
 <head>
+    <meta charset="utf-8">
     <title>Clarity Map Editor</title>
     <script type="text/javascript" src="Clarity.js"></script>
     <style>
@@ -932,6 +933,345 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .qa-grid button.qa-trigger {
+            background: #887722;
+            border-color: #aa8833;
+            color: #fff;
+        }
+        .qa-grid button.qa-block-maker {
+            background: #225588;
+            border-color: #3377aa;
+            color: #fff;
+        }
+
+        /* Block Maker */
+        #qa-block-maker-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+            margin: 8px 0;
+        }
+        .bm-preset {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 6px;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            min-height: 64px;
+            color: #ddd;
+        }
+        .bm-preset:hover {
+            background: #333;
+            border-color: #888;
+        }
+        .bm-swatch {
+            width: 22px;
+            height: 22px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            margin-bottom: 3px;
+            flex-shrink: 0;
+        }
+        .bm-label {
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .bm-desc {
+            font-size: 9px;
+            color: #888;
+            margin-top: 1px;
+        }
+
+        /* Automation Manager */
+        .auto-card {
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 4px 6px;
+            margin-bottom: 4px;
+            background: #1a1a1a;
+        }
+        .auto-card .auto-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 2px;
+        }
+        .auto-card .auto-name {
+            font-size: 11px;
+            color: #ddd;
+            font-weight: bold;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .auto-card .auto-enabled {
+            font-size: 10px;
+            margin: 0;
+        }
+        .auto-card .auto-summary {
+            font-size: 9px;
+            color: #888;
+            margin: 1px 0;
+        }
+        .auto-card .auto-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 3px;
+        }
+        .auto-card .auto-actions button {
+            font-size: 9px;
+            padding: 1px 5px;
+            cursor: pointer;
+        }
+        .auto-header-input {
+            font-size: 11px;
+            padding: 1px 3px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #444;
+            flex: 1;
+        }
+        .auto-add-btn {
+            width: 100%;
+            padding: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-top: 2px;
+        }
+
+        /* Automation Editor Modal */
+        #auto-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 270;
+            align-items: center;
+            justify-content: center;
+        }
+        #auto-modal-overlay.open {
+            display: flex;
+        }
+        #auto-picker-back {
+            display: none;
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 300;
+            background: #333;
+            border: 1px solid #888;
+            color: #eee;
+            padding: 6px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #auto-picker-back:hover {
+            background: #555;
+        }
+        #auto-modal-box {
+            background: #222;
+            border: 2px solid #555;
+            border-radius: 4px;
+            padding: 16px 20px;
+            min-width: 520px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+        #auto-modal-box h2 {
+            margin: 0 0 10px 0;
+            font-size: 15px;
+            color: #fff;
+        }
+        .auto-section-title {
+            font-weight: bold;
+            font-size: 11px;
+            color: #aaa;
+            padding: 6px 0 3px 0;
+            border-bottom: 1px solid #333;
+            margin: 8px 0 4px 0;
+        }
+        .auto-form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            align-items: center;
+            padding: 3px 0;
+        }
+        .auto-form-row label {
+            font-size: 11px;
+            color: #aaa;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .auto-form-row select,
+        .auto-form-row input[type="text"],
+        .auto-form-row input[type="number"] {
+            font-size: 11px;
+            padding: 2px 4px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #444;
+        }
+        .auto-form-row select { width: auto; min-width: 80px; }
+        .auto-form-row input[type="number"] { width: 52px; }
+        .auto-form-row input[type="text"] { width: 140px; }
+        .auto-form-row input[type="color"] {
+            width: 24px;
+            height: 20px;
+            padding: 0;
+            border: 1px solid #555;
+            background: none;
+            cursor: pointer;
+        }
+        .auto-form-row input[type="checkbox"] {
+            margin: 0;
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #555;
+            background: #111;
+            cursor: pointer;
+            position: relative;
+        }
+        .auto-form-row input[type="checkbox"]:checked {
+            background: #555;
+            border-color: #888;
+        }
+        .auto-form-row input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            line-height: 1;
+            color: #ddd;
+        }
+        .auto-pick-btn {
+            font-size: 9px;
+            padding: 1px 5px;
+            cursor: pointer;
+            background: #1a2a1a;
+            border: 1px solid #3a5a3a;
+            color: #aaa;
+        }
+        .auto-pick-btn:hover {
+            background: #2a4a2a;
+            color: #fff;
+        }
+        .auto-action-item {
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 4px 6px;
+            margin: 3px 0;
+            background: #1a1a1a;
+        }
+        .auto-action-item .auto-action-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 2px;
+        }
+        .auto-action-item .auto-action-header .auto-action-num {
+            font-size: 10px;
+            color: #666;
+            min-width: 16px;
+        }
+        .auto-action-item .auto-action-header select {
+            font-size: 10px;
+            padding: 1px 3px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #444;
+        }
+        .auto-action-item .auto-action-body {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px 6px;
+            align-items: center;
+            padding: 2px 0 0 20px;
+        }
+        .auto-action-item .auto-action-body label {
+            font-size: 10px;
+            color: #888;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .auto-action-item .auto-action-body select,
+        .auto-action-item .auto-action-body input[type="number"],
+        .auto-action-item .auto-action-body input[type="text"] {
+            font-size: 10px;
+            padding: 1px 3px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #444;
+        }
+        .auto-action-item .auto-action-body input[type="number"] { width: 40px; }
+        .auto-action-item .auto-action-body input[type="text"] { width: 100px; }
+        .auto-action-item .auto-action-body input[type="color"] {
+            width: 20px;
+            height: 16px;
+            padding: 0;
+            border: 1px solid #555;
+            background: none;
+            cursor: pointer;
+        }
+        .auto-remove-action {
+            font-size: 9px;
+            padding: 1px 4px;
+            cursor: pointer;
+            background: #3a1a1a;
+            border: 1px solid #5a3a3a;
+            color: #aaa;
+            margin-left: auto;
+        }
+        .auto-remove-action:hover {
+            background: #5a2a2a;
+            color: #fff;
+        }
+        .auto-add-action-btn {
+            font-size: 10px;
+            padding: 2px 8px;
+            cursor: pointer;
+            margin-top: 3px;
+        }
+        .auto-modal-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+        }
+        .auto-modal-buttons button {
+            flex: 1;
+            padding: 5px 8px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .theme-index-swatch {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 1px solid #555;
+            border-radius: 1px;
+            margin-right: 2px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 
@@ -1021,6 +1361,10 @@
                     </div>
                 </div>
                 <div class="side-section">
+                    <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Automations</div>
+                    <div class="section-body closed" id="automations-panel"></div>
+                </div>
+                <div class="side-section">
                     <div class="section-header" onclick="toggleSection(this)"><span class="arrow">▸</span> Tasks</div>
                     <div class="section-body closed" id="tasks-panel"></div>
                 </div>
@@ -1060,6 +1404,8 @@
                         <button class="qa-key" onclick="showQuickAddKeyForm()">KEY Key</button>
                         <button class="qa-info" onclick="showQuickAddInfoForm()">(i) Info</button>
                         <button onclick="showQuickAddTreasureForm()" style="background:#887700;border-color:#aa8800;color:#fff;">Treasure Exit</button>
+                        <button class="qa-trigger" onclick="quickAddTrigger()">⚡ Trigger</button>
+                        <button class="qa-block-maker" onclick="showBlockMaker()">[+] Block Maker</button>
                     </div>
                     <div class="qa-advanced-row">
                         <button onclick="showQuickAddAdvanced()">▼ Advanced — full block editor</button>
@@ -1091,6 +1437,13 @@
                     </div>
                     <div style="margin-top:8px;display:flex;gap:6px;">
                         <button onclick="confirmQuickAddTreasure()">+ Add Treasure Exit</button>
+                        <button onclick="showQuickAddDialog()">← Back</button>
+                    </div>
+                </div>
+                <div id="qa-block-maker" style="display:none">
+                    <p style="font-size:12px;color:#888;margin:0 0 6px 0;">Clone a preset block type. Edit it afterwards via the palette.</p>
+                    <div id="qa-block-maker-grid"></div>
+                    <div style="margin-top:6px;display:flex;gap:6px;">
                         <button onclick="showQuickAddDialog()">← Back</button>
                     </div>
                 </div>
@@ -1285,6 +1638,40 @@
             </div>
         </div>
     </div>
+
+    <div id="auto-modal-overlay">
+        <div id="auto-modal-box">
+            <h2 id="auto-modal-title">Automation Editor</h2>
+            <input type="hidden" id="auto-edit-id" value="">
+            <div class="auto-section-title">Name</div>
+            <div class="auto-form-row">
+                <label>Name: <input type="text" id="auto-name" placeholder="e.g. Open Secret Door" style="width:280px"></label>
+                <label title="One-time only (fires at most once per map load)"><input type="checkbox" id="auto-once" checked> Once</label>
+            </div>
+            <div class="auto-section-title">Trigger</div>
+            <div class="auto-form-row" id="auto-trigger-row">
+                <label>Type:
+                    <select id="auto-trigger-type" onchange="updateAutoTriggerFields()">
+                        <option value="tile_step">Player steps on tile</option>
+                        <option value="key_collected">Key collected</option>
+                        <option value="timer">Timer (after map load)</option>
+                        <option value="checkpoint">Checkpoint activated</option>
+                        <option value="task_completed">Task completed</option>
+                    </select>
+                </label>
+            </div>
+            <div id="auto-trigger-params"></div>
+            <div class="auto-section-title">Actions</div>
+            <div id="auto-actions-list"></div>
+            <button class="auto-add-action-btn" onclick="addAutoAction()">+ Add Action</button>
+            <div class="auto-modal-buttons">
+                <button onclick="saveAutomation()" id="auto-modal-confirm" style="background:#2a4a2a;border-color:#4a7a4a;">Save Automation</button>
+                <button onclick="hideAutoDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="auto-picker-back">← Back</div>
 
     <script>
         var mapData = null;
@@ -1545,6 +1932,7 @@
             document.getElementById('qa-key-form').style.display = 'none';
             document.getElementById('qa-info-form').style.display = 'none';
             document.getElementById('qa-treasure-form').style.display = 'none';
+            document.getElementById('qa-block-maker').style.display = 'none';
         }
 
         function showQuickAddDialog() {
@@ -1552,6 +1940,7 @@
             document.getElementById('qa-key-form').style.display = 'none';
             document.getElementById('qa-info-form').style.display = 'none';
             document.getElementById('qa-treasure-form').style.display = 'none';
+            document.getElementById('qa-block-maker').style.display = 'none';
             document.getElementById('quick-add-overlay').classList.add('open');
             renderDoorList();
         }
@@ -1722,6 +2111,7 @@
             renderPaletteEditor();
             renderGrid();
             renderScripts();
+            renderAutomations();
             renderTasks();
             pushHistory();
             document.getElementById('status').textContent = 'Added info "' + name + '" (ID ' + id + ')';
@@ -1750,6 +2140,84 @@
                 }
             }
             return null;
+        }
+
+        /* ---- Block Maker & Trigger ---- */
+
+        function quickAddTrigger() {
+            if (!mapData) return;
+            var source = mapData.keys.find(function(k) { return k.id === 1; });
+            if (!source) return;
+            var id = getNextTileId();
+            var clone = JSON.parse(JSON.stringify(source));
+            clone.id = id;
+            clone.name = 'Trigger';
+            delete clone.script;
+            clone.solid = 0;
+            mapData.keys.push(clone);
+            hideQuickAddDialog();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            pushHistory();
+            document.getElementById('status').textContent = 'Added Trigger block (ID ' + id + ')';
+        }
+
+        function showBlockMaker() {
+            if (!mapData) { alert('No map loaded.'); return; }
+            document.getElementById('qa-menu').style.display = 'none';
+            document.getElementById('qa-key-form').style.display = 'none';
+            document.getElementById('qa-info-form').style.display = 'none';
+            document.getElementById('qa-treasure-form').style.display = 'none';
+            document.getElementById('qa-block-maker').style.display = '';
+            renderBlockMakerPresets();
+        }
+
+        function renderBlockMakerPresets() {
+            var grid = document.getElementById('qa-block-maker-grid');
+            grid.innerHTML = '';
+            var themeColour = function(id) {
+                var k = mapData.keys.find(function(k) { return k.id === id; });
+                return k ? k.colour : '#555';
+            };
+            var presets = [
+                { sourceId: 2,  label: 'Solid (Bounce)',    desc: 'solid, bounce 0.35' },
+                { sourceId: 10, label: 'Solid (No Bounce)',  desc: 'solid' },
+                { sourceId: 1,  label: 'Floor',              desc: 'non-solid' },
+                { sourceId: 4,  label: 'Platform',           desc: 'jump-thru' },
+                { sourceId: 3,  label: 'Ice / Jump-thru',    desc: 'jump-thru, friction, fore' },
+                { sourceId: 5,  label: 'Super Bounce',       desc: 'solid, bounce 1.1' },
+                { sourceId: 6,  label: 'Wall',               desc: 'solid, no bounce' },
+                { sourceId: 14, label: 'Fade Floor',         desc: 'fading platform' },
+                { sourceId: 15, label: 'Group Fade',         desc: 'group fading platform' },
+            ];
+            presets.forEach(function(p) {
+                var source = mapData.keys.find(function(k) { return k.id === p.sourceId; });
+                if (!source) return;
+                var colour = source.colour || '#555';
+                var btn = document.createElement('button');
+                btn.className = 'bm-preset';
+                btn.innerHTML = '<span class="bm-swatch" style="background:' + colour.replace(/"/g,'&quot;') + '"></span><span class="bm-label">' + p.label + '</span><span class="bm-desc">' + p.desc + '</span>';
+                btn.onclick = function() { cloneFromPreset(p.sourceId); };
+                grid.appendChild(btn);
+            });
+        }
+
+        function cloneFromPreset(sourceId) {
+            var source = mapData.keys.find(function(k) { return k.id === sourceId; });
+            if (!source) return;
+            var newId = getNextTileId();
+            var clone = JSON.parse(JSON.stringify(source));
+            clone.id = newId;
+            delete clone.script;
+            mapData.keys.push(clone);
+            hideQuickAddDialog();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            renderAutomations();
+            pushHistory();
+            document.getElementById('status').textContent = 'Cloned "' + (source.name || 'Tile ' + sourceId) + '" as ID ' + newId;
         }
 
         function updateKeyDoorScript(key, oldKey) {
@@ -1989,6 +2457,7 @@
             renderPaletteEditor();
             renderGrid();
             renderScripts();
+            renderAutomations();
             pushHistory();
         }
 
@@ -2008,6 +2477,7 @@
             renderPaletteEditor();
             renderGrid();
             renderScripts();
+            renderAutomations();
             pushHistory();
         }
 
@@ -2020,6 +2490,11 @@
                 currentMapIndex = 0;
             }
             mapData = data;
+            if (!mapData.automations) mapData.automations = [];
+            if (!mapData.themePalette) {
+                mapData.themePalette = presetThemes['Original'].slice();
+                mapData.currentTheme = 'Original';
+            }
             if (!skipHistory) {
                 undoStack = [];
                 undoIndex = -1;
@@ -2042,6 +2517,7 @@
             renderGrid();
             renderScripts();
             renderPresets();
+            renderAutomations();
             renderTasks();
             renderModularTabs();
             if (!skipHistory) pushHistory();
@@ -2147,7 +2623,10 @@
                     death: "alert(\"You died!\");this.load_map(this.source_map);",
                     unlock: "var door=this.current_map.keys.find(function(k){return k.id===10;});if(door&&door.solid){door.solid=0;door.colour=this.current_map.keys.find(function(k){return k.id===1;}).colour;}",
                     combined_12: "this.activateCheckpoint(12);"
-                }
+                },
+                automations: [],
+                themePalette: presetThemes['Original'].slice(),
+                currentTheme: 'Original'
             };
             modularWorld.maps.push(newMap);
             switchMap(modularWorld.maps.length - 1);
@@ -2539,7 +3018,10 @@
                     death: "alert(\"You died!\");this.load_map(this.source_map);",
                     unlock: "var door=this.current_map.keys.find(function(k){return k.id===10;});if(door&&door.solid){door.solid=0;door.colour=this.current_map.keys.find(function(k){return k.id===1;}).colour;}",
                     combined_12: "this.activateCheckpoint(12);"
-                }
+                },
+                automations: [],
+                themePalette: presetThemes['Original'].slice(),
+                currentTheme: 'Original'
             };
             if (adding) {
                 modularWorld.maps.push(newMap);
@@ -2739,9 +3221,12 @@
                 if (key.themeLinked === 'key' && colors[13]) key.colour = colors[13];
                 if (key.themeLinked === 'fade' && colors[2]) key.colour = colors[2];
             });
+            mapData.themePalette = colors.slice();
+            mapData.currentTheme = name;
             renderPaletteTiles();
             renderPaletteEditor();
             renderGrid();
+            renderAutomations();
             pushHistory();
         }
 
@@ -2844,6 +3329,7 @@
                 }
             };
             rebuildTask(key);
+            renderAutomations();
             renderTasks();
             renderPaletteTiles();
             renderPaletteEditor();
@@ -2866,6 +3352,383 @@
                 row.appendChild(ta);
                 div.appendChild(row);
             });
+        }
+
+        /* ---- Automation Manager ---- */
+
+        var pickingForAutomation = false;
+        var _autoPickSelector = null;
+
+        function getNextAutoId() {
+            if (!mapData.automations) return 1;
+            var ids = mapData.automations.map(function(a) { return a.id; });
+            return ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
+        }
+
+        function renderAutomations() {
+            var div = document.getElementById('automations-panel');
+            if (!mapData) { div.innerHTML = ''; return; }
+            if (!mapData.automations) mapData.automations = [];
+            if (mapData.automations.length === 0) {
+                div.innerHTML = '<em style="font-size:11px;color:#555;">No automations</em>'
+                    + '<button class="auto-add-btn" onclick="showAddAutoDialog()">+ Add Automation</button>';
+                return;
+            }
+            var html = '';
+            mapData.automations.forEach(function(a) {
+                var triggerLabel = getTriggerSummary(a);
+                var actionLabel = getActionSummary(a);
+                html += '<div class="auto-card">'
+                    + '<div class="auto-header">'
+                    + '<label class="auto-enabled" title="Enabled"><input type="checkbox" ' + (a.enabled !== false ? 'checked' : '') + ' onchange="toggleAuto(' + a.id + ',this.checked)"></label>'
+                    + '<span class="auto-name">' + escHtml(a.name || 'Unnamed') + '</span>'
+                    + '</div>'
+                    + '<div class="auto-summary">' + escHtml(triggerLabel) + '</div>'
+                    + '<div class="auto-summary">' + escHtml(actionLabel) + '</div>'
+                    + '<div class="auto-actions">'
+                    + '<button onclick="showEditAutoDialog(' + a.id + ')">Edit</button>'
+                    + '<button onclick="deleteAutomation(' + a.id + ')" style="background:#3a1a1a;border-color:#5a3a3a;">Delete</button>'
+                    + '</div></div>';
+            });
+            html += '<button class="auto-add-btn" onclick="showAddAutoDialog()">+ Add Automation</button>';
+            div.innerHTML = html;
+        }
+
+        function escHtml(s) {
+            if (!s) return '';
+            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function getTriggerSummary(a) {
+            if (!a || !a.trigger) return 'No trigger';
+            var t = a.trigger;
+            var onceLabel = a.once ? ' (once)' : '';
+            switch (t.type) {
+                case 'tile_step': return 'When player steps on Tile ' + (t.params.tileId || '?') + onceLabel;
+                case 'key_collected': return 'When Key ' + (t.params.keyId || '?') + ' is collected' + onceLabel;
+                case 'timer': return 'After ' + (t.params.delay || '?') + 's' + onceLabel;
+                case 'checkpoint': return 'When Checkpoint ' + (t.params.checkpointId || '?') + ' activated' + onceLabel;
+                case 'task_completed': return 'When Task #' + (t.params.taskId || '?') + ' completed' + onceLabel;
+                default: return 'Trigger: ' + t.type + onceLabel;
+            }
+        }
+
+        function getActionSummary(a) {
+            if (!a || !a.actions || a.actions.length === 0) return 'No actions';
+            var labels = a.actions.map(function(act) {
+                var p = act.params || {};
+                switch (act.type) {
+                    case 'set_solid': return 'Solid(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
+                    case 'set_colour': return 'Colour(' + p.targetId + ':' + (p.source === 'theme' ? 'Theme' + (p.themeIndex !== undefined ? '[' + p.themeIndex + ']' : '') : 'Custom') + ')';
+                    case 'set_opaque': return 'Opaque(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
+                    case 'set_bounce': return 'Bounce(' + p.targetId + ':' + p.value + ')';
+                    case 'set_jump': return 'Jump(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
+                    case 'set_fore': return 'Fore(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
+                    case 'show_message': return 'Msg';
+                    case 'complete_task': return 'Complete #' + p.taskId;
+                    case 'activate_checkpoint': return 'Checkpoint ' + p.checkpointId;
+                    case 'go_to_treasure': return 'Treasure ' + p.treasureId;
+                    case 'set_player_colour': return 'Player Colour';
+                    case 'load_map': return 'Load Map';
+                    default: return act.type;
+                }
+            });
+            return labels.join(', ');
+        }
+
+        function showAddAutoDialog() {
+            if (!mapData) return;
+            if (!mapData.automations) mapData.automations = [];
+            document.getElementById('auto-edit-id').value = '';
+            document.getElementById('auto-modal-title').textContent = 'Add Automation';
+            document.getElementById('auto-modal-confirm').textContent = 'Add Automation';
+            document.getElementById('auto-name').value = 'New Automation';
+            document.getElementById('auto-once').checked = true;
+            document.getElementById('auto-trigger-type').value = 'tile_step';
+            document.getElementById('auto-trigger-params').innerHTML = '';
+            document.getElementById('auto-actions-list').innerHTML = '';
+            updateAutoTriggerFields();
+            document.getElementById('auto-modal-overlay').classList.add('open');
+        }
+
+        function showEditAutoDialog(id) {
+            var auto = mapData.automations.find(function(a) { return a.id === id; });
+            if (!auto) return;
+            document.getElementById('auto-edit-id').value = id;
+            document.getElementById('auto-modal-title').textContent = 'Edit Automation';
+            document.getElementById('auto-modal-confirm').textContent = 'Save Automation';
+            document.getElementById('auto-name').value = auto.name || '';
+            document.getElementById('auto-once').checked = auto.once !== false;
+            document.getElementById('auto-trigger-type').value = auto.trigger ? auto.trigger.type : 'tile_step';
+            updateAutoTriggerFields();
+            if (auto.trigger) {
+                var tp = document.getElementById('auto-trigger-params');
+                var inputs = tp.querySelectorAll('[data-param]');
+                inputs.forEach(function(inp) {
+                    var key = inp.getAttribute('data-param');
+                    if (auto.trigger.params && auto.trigger.params[key] !== undefined) {
+                        if (inp.type === 'checkbox') inp.checked = auto.trigger.params[key];
+                        else inp.value = auto.trigger.params[key];
+                    }
+                });
+            }
+            renderAutoActions(auto.actions || []);
+            document.getElementById('auto-modal-overlay').classList.add('open');
+        }
+
+        function hideAutoDialog() {
+            document.getElementById('auto-modal-overlay').classList.remove('open');
+        }
+
+        function saveAutomation() {
+            if (!mapData) return;
+            if (!mapData.automations) mapData.automations = [];
+            var editId = document.getElementById('auto-edit-id').value;
+            var name = document.getElementById('auto-name').value.trim() || 'Unnamed';
+            var once = document.getElementById('auto-once').checked;
+            var triggerType = document.getElementById('auto-trigger-type').value;
+            var triggerParams = {};
+            var tp = document.getElementById('auto-trigger-params');
+            var inputs = tp.querySelectorAll('[data-param]');
+            inputs.forEach(function(inp) {
+                var key = inp.getAttribute('data-param');
+                triggerParams[key] = inp.type === 'checkbox' ? inp.checked : (inp.type === 'number' ? parseFloat(inp.value) : inp.value);
+            });
+            var actions = [];
+            var actionItems = document.querySelectorAll('#auto-actions-list .auto-action-item');
+            actionItems.forEach(function(item) {
+                var type = item.querySelector('.auto-action-type-select').value;
+                var params = {};
+                var inputs2 = item.querySelectorAll('[data-actparam]');
+                inputs2.forEach(function(inp) {
+                    var key = inp.getAttribute('data-actparam');
+                    if (inp.type === 'checkbox') params[key] = inp.checked;
+                    else if (inp.type === 'number') params[key] = parseFloat(inp.value);
+                    else if (inp.type === 'color') params[key] = inp.value;
+                    else if (inp.tagName === 'SELECT' && inp.value !== '' && !isNaN(parseFloat(inp.value))) {
+                        params[key] = parseFloat(inp.value);
+                    } else params[key] = inp.value;
+                });
+                actions.push({ type: type, params: params });
+            });
+            var auto;
+            if (editId) {
+                auto = mapData.automations.find(function(a) { return a.id === parseInt(editId); });
+                if (!auto) return;
+                auto.name = name;
+                auto.once = once;
+                auto.trigger = { type: triggerType, params: triggerParams };
+                auto.actions = actions;
+            } else {
+                auto = {
+                    id: getNextAutoId(),
+                    name: name,
+                    enabled: true,
+                    once: once,
+                    trigger: { type: triggerType, params: triggerParams },
+                    actions: actions
+                };
+                mapData.automations.push(auto);
+            }
+            hideAutoDialog();
+            renderAutomations();
+            pushHistory();
+            document.getElementById('status').textContent = 'Saved automation "' + name + '"';
+        }
+
+        function deleteAutomation(id) {
+            if (!mapData.automations) return;
+            var auto = mapData.automations.find(function(a) { return a.id === id; });
+            if (!auto) return;
+            if (!confirm('Delete automation "' + (auto.name || 'Unnamed') + '"?')) return;
+            mapData.automations = mapData.automations.filter(function(a) { return a.id !== id; });
+            renderAutomations();
+            pushHistory();
+        }
+
+        function toggleAuto(id, enabled) {
+            var auto = mapData.automations.find(function(a) { return a.id === id; });
+            if (auto) { auto.enabled = enabled; pushHistory(); }
+        }
+
+        /* Automation trigger fields */
+
+        function updateAutoTriggerFields() {
+            var type = document.getElementById('auto-trigger-type').value;
+            var container = document.getElementById('auto-trigger-params');
+            container.innerHTML = buildAutoTriggerParams(type);
+        }
+
+        function buildAutoTriggerParams(type) {
+            switch (type) {
+                case 'tile_step':
+                    return '<div class="auto-form-row">'
+                        + '<label>Tile ID: <input type="number" data-param="tileId" value="7" min="0" style="width:52px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'#auto-trigger-params [data-param=tileId]\')">Pick</button>'
+                        + '</div>';
+                case 'key_collected':
+                    return '<div class="auto-form-row">'
+                        + '<label>Key Tile ID: <input type="number" data-param="keyId" value="11" min="0" style="width:52px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'#auto-trigger-params [data-param=keyId]\')">Pick</button>'
+                        + '</div>';
+                case 'timer':
+                    return '<div class="auto-form-row">'
+                        + '<label>Delay: <input type="number" data-param="delay" value="5" min="0.5" step="0.5" style="width:52px"> seconds</label>'
+                        + '</div>';
+                case 'checkpoint':
+                    return '<div class="auto-form-row">'
+                        + '<label>Checkpoint Tile ID: <input type="number" data-param="checkpointId" value="12" min="0" style="width:52px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'#auto-trigger-params [data-param=checkpointId]\')">Pick</button>'
+                        + '</div>';
+                case 'task_completed':
+                    return '<div class="auto-form-row">'
+                        + '<label>Task ID: <input type="number" data-param="taskId" value="1" min="1" style="width:52px"></label>'
+                        + '</div>';
+                default:
+                    return '';
+            }
+        }
+
+        /* Automation action list */
+
+        function renderAutoActions(actions) {
+            var list = document.getElementById('auto-actions-list');
+            list.innerHTML = '';
+            actions.forEach(function(act, i) {
+                list.appendChild(buildAutoActionItem(act, i));
+            });
+        }
+
+        function addAutoAction() {
+            var list = document.getElementById('auto-actions-list');
+            var act = { type: 'set_solid', params: { targetId: 0, value: 1 } };
+            list.appendChild(buildAutoActionItem(act, list.children.length));
+        }
+
+        function removeAutoAction(btn) {
+            var item = btn.closest('.auto-action-item');
+            if (item) item.parentNode.removeChild(item);
+        }
+
+        function buildAutoActionItem(act, index) {
+            var item = document.createElement('div');
+            item.className = 'auto-action-item';
+            var num = index + 1;
+            var paramsHtml = buildAutoActionBody(act.type, act.params, index);
+            item.innerHTML = '<div class="auto-action-header">'
+                + '<span class="auto-action-num">' + num + '.</span>'
+                + '<select class="auto-action-type-select" onchange="updateAutoActionFields(this)">'
+                + '<option value="set_solid"' + (act.type === 'set_solid' ? ' selected' : '') + '>Set Solid</option>'
+                + '<option value="set_colour"' + (act.type === 'set_colour' ? ' selected' : '') + '>Set Colour</option>'
+                + '<option value="set_opaque"' + (act.type === 'set_opaque' ? ' selected' : '') + '>Set Opaque</option>'
+                + '<option value="set_bounce"' + (act.type === 'set_bounce' ? ' selected' : '') + '>Set Bounce</option>'
+                + '<option value="set_jump"' + (act.type === 'set_jump' ? ' selected' : '') + '>Set Jump-thru</option>'
+                + '<option value="set_fore"' + (act.type === 'set_fore' ? ' selected' : '') + '>Set Foreground</option>'
+                + '<option value="show_message"' + (act.type === 'show_message' ? ' selected' : '') + '>Show Message</option>'
+                + '<option value="complete_task"' + (act.type === 'complete_task' ? ' selected' : '') + '>Complete Task</option>'
+                + '<option value="activate_checkpoint"' + (act.type === 'activate_checkpoint' ? ' selected' : '') + '>Activate Checkpoint</option>'
+                + '<option value="go_to_treasure"' + (act.type === 'go_to_treasure' ? ' selected' : '') + '>Go to Treasure</option>'
+                + '<option value="set_player_colour"' + (act.type === 'set_player_colour' ? ' selected' : '') + '>Set Player Colour</option>'
+                + '</select>'
+                + '<button class="auto-remove-action" onclick="removeAutoAction(this)">✕</button>'
+                + '</div>'
+                + '<div class="auto-action-body">' + paramsHtml + '</div>';
+            return item;
+        }
+
+        function updateAutoActionFields(select) {
+            var item = select.closest('.auto-action-item');
+            var type = select.value;
+            var body = item.querySelector('.auto-action-body');
+            body.innerHTML = buildAutoActionBody(type, {});
+        }
+
+        var _themeIndexLabels = ['BG', 'Floor', 'Brick', 'Ice', 'Platform', 'SuperBnc', 'Wall', 'Trigger', 'Goal', 'Death', 'BrickSol', 'Unlock', 'Door', 'Key'];
+
+        function makeActionPickSelector(index, param) {
+            return '#auto-actions-list .auto-action-item:nth-child(' + (index + 1) + ') [data-actparam=&quot;' + param + '&quot;]';
+        }
+
+        function buildAutoActionBody(type, params, actionIndex) {
+            var p = params || {};
+            var ai = actionIndex !== undefined ? actionIndex : 0;
+            var esc = function(s) { return (s || '').replace(/"/g,'&quot;'); };
+            switch (type) {
+                case 'set_solid':
+                    return '<label>Target Tile ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:40px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
+                        + '<label><input type="checkbox" data-actparam="value" ' + (p.value ? 'checked' : '') + '> Solid</label>';
+                case 'set_colour':
+                    var source = p.source || 'theme';
+                    var ti = p.themeIndex !== undefined ? p.themeIndex : 0;
+                    var custCol = p.colour || '#FF0000';
+                    var themeOpts = '';
+                    for (var i = 0; i < _themeIndexLabels.length; i++) {
+                        var c = '#555';
+                        if (mapData && mapData.themePalette && mapData.themePalette[i]) c = mapData.themePalette[i];
+                        var sel = i === ti ? ' selected' : '';
+                        themeOpts += '<option value="' + i + '"' + sel + '>' + _themeIndexLabels[i] + ' (' + i + ')</option>';
+                    }
+                    return '<label>Target Tile ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:40px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
+                        + '<label>Source: <select data-actparam="source" onchange="var n=this.closest(\'.auto-action-body\');n.querySelector(\'.auto-theme-row\').style.display=this.value===\'theme\'?\'\':\'none\';n.querySelector(\'.auto-custom-row\').style.display=this.value===\'custom\'?\'\':\'none\';">'
+                        + '<option value="theme"' + (source === 'theme' ? ' selected' : '') + '>Theme colour</option>'
+                        + '<option value="custom"' + (source === 'custom' ? ' selected' : '') + '>Custom colour</option>'
+                        + '</select></label>'
+                        + '<label class="auto-theme-row" style="display:' + (source === 'theme' ? '' : 'none') + '">Index: <select data-actparam="themeIndex">' + themeOpts + '</select></label>'
+                        + '<label class="auto-custom-row" style="display:' + (source === 'custom' ? '' : 'none') + '">Colour: <input type="color" data-actparam="colour" value="' + esc(custCol) + '"></label>';
+                case 'set_opaque':
+                    return '<label>Target Tile ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:40px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
+                        + '<label><input type="checkbox" data-actparam="value" ' + (p.value ? 'checked' : '') + '> Opaque</label>';
+                case 'set_bounce':
+                    return '<label>Target Tile ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:40px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
+                        + '<label>Bounce: <input type="number" data-actparam="value" value="' + (p.value || 0) + '" step="0.05" min="0" style="width:44px"></label>';
+                case 'set_jump':
+                    return '<label>Target Tile ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:40px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
+                        + '<label><input type="checkbox" data-actparam="value" ' + (p.value ? 'checked' : '') + '> Jump-thru</label>';
+                case 'set_fore':
+                    return '<label>Target Tile ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:40px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
+                        + '<label><input type="checkbox" data-actparam="value" ' + (p.value ? 'checked' : '') + '> Foreground</label>';
+                case 'show_message':
+                    return '<label>Message: <input type="text" data-actparam="message" value="' + esc(p.message || '') + '" style="width:200px"></label>';
+                case 'complete_task':
+                    return '<label>Task ID: <input type="number" data-actparam="taskId" value="' + (p.taskId || 1) + '" min="1" style="width:52px"></label>';
+                case 'activate_checkpoint':
+                    return '<label>Checkpoint Tile ID: <input type="number" data-actparam="checkpointId" value="' + (p.checkpointId || 12) + '" min="0" style="width:52px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'checkpointId') + '\')">Pick</button>';
+                case 'go_to_treasure':
+                    return '<label>Treasure ID: <input type="number" data-actparam="treasureId" value="' + (p.treasureId || 1) + '" min="1" style="width:52px"></label>';
+                case 'set_player_colour':
+                    return '<label>Colour: <input type="color" data-actparam="colour" value="' + esc(p.colour || '#FF9900') + '"></label>';
+                default:
+                    return '';
+            }
+        }
+
+        /* ---- In-map picker for automations ---- */
+
+        document.getElementById('auto-picker-back').addEventListener('click', function() {
+            pickingForAutomation = false;
+            _autoPickSelector = null;
+            document.getElementById('auto-picker-back').style.display = 'none';
+            document.getElementById('auto-modal-overlay').classList.add('open');
+            document.getElementById('grid').style.cursor = '';
+            document.getElementById('status').textContent = '';
+            renderGrid();
+        });
+
+        function startAutoPick(selector) {
+            if (!mapData) return;
+            _autoPickSelector = selector;
+            pickingForAutomation = true;
+            document.getElementById('auto-modal-overlay').classList.remove('open');
+            document.getElementById('auto-picker-back').style.display = 'block';
+            document.getElementById('grid').style.cursor = 'crosshair';
+            document.getElementById('status').textContent = 'Click a tile on the map to pick it...';
         }
 
         function renderGrid() {
@@ -2997,6 +3860,25 @@
         /* ---- Canvas event handlers ---- */
 
         function handleGridMouseDown(e) {
+            if (pickingForAutomation) {
+                var pos = getGridPos(e);
+                var tileId = mapData.data[pos.y] !== undefined ? mapData.data[pos.y][pos.x] : null;
+                if (tileId !== null && tileId !== undefined) {
+                    pickingForAutomation = false;
+                    var sel = _autoPickSelector;
+                    _autoPickSelector = null;
+                    document.getElementById('auto-picker-back').style.display = 'none';
+                    document.getElementById('auto-modal-overlay').classList.add('open');
+                    document.getElementById('grid').style.cursor = '';
+                    document.getElementById('status').textContent = '';
+                    renderGrid();
+                    if (sel) {
+                        var el = document.querySelector(sel);
+                        if (el) el.value = tileId;
+                    }
+                }
+                return;
+            }
             if (pickingSpawn) {
                 var pos = getGridPos(e);
                 if (!mapData.player) mapData.player = {};
