@@ -347,6 +347,26 @@
             color: #888;
             margin-right: 2px;
         }
+        #info-legend {
+            display: none;
+            position: fixed;
+            top: 44px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            border: 1px solid #666;
+            border-radius: 4px;
+            padding: 8px 14px;
+            z-index: 500;
+            font-size: 11px;
+            color: #ddd;
+            line-height: 1.6;
+            white-space: nowrap;
+        }
+        #info-legend span {
+            color: #ff0;
+            font-weight: bold;
+        }
         #brush-size-input {
             width: 32px;
             font-size: 11px;
@@ -1244,6 +1264,45 @@
             background: #5a2a2a;
             color: #fff;
         }
+        .auto-drag-handle {
+            cursor: grab;
+            color: #666;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0 2px;
+            user-select: none;
+        }
+        .auto-drag-handle:active { cursor: grabbing; }
+        .auto-action-item[draggable="true"] { cursor: default; }
+        .auto-delay-label {
+            font-size: 9px;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 1px;
+            white-space: nowrap;
+            margin-left: 4px;
+        }
+        .auto-delay-input {
+            font-size: 9px;
+            padding: 1px 2px;
+            background: #111;
+            color: #ddd;
+            border: 1px solid #444;
+        }
+        .auto-move-up, .auto-move-down {
+            font-size: 8px;
+            padding: 1px 3px;
+            cursor: pointer;
+            background: #1a1a2a;
+            border: 1px solid #444;
+            color: #888;
+            line-height: 1;
+        }
+        .auto-move-up:hover, .auto-move-down:hover {
+            background: #2a2a3a;
+            color: #ddd;
+        }
         .auto-add-action-btn {
             font-size: 10px;
             padding: 2px 8px;
@@ -1293,11 +1352,12 @@
         <button id="select-btn" class="tool-btn" onclick="setTool('select')" title="Select (V)">Select</button>
         <button id="eraser-btn" class="tool-btn" onclick="setTool('eraser')" title="Eraser (E)">Eraser</button>
         <button id="xray-btn" onclick="toggleXray()">X-Ray</button>
+        <button id="xray-detail-btn" onclick="toggleXrayDetail()" title="Show IDs only on special tiles (I)">Info</button>
         <span class="sep"></span>
         <span class="tool-label">Brush:</span>
         <input type="number" id="brush-size-input" value="1" min="1" max="9" onchange="brushSize=Math.max(1,Math.min(9,parseInt(this.value)||1));updateBrushLabel();" title="Brush size ( [ to decrease, ] to increase )">
         <span id="brush-size-label" style="font-size:11px;color:#888;margin-right:6px;">1×1</span>
-        <span id="shortcuts-hint" title="Keyboard shortcuts: P=draw, R=rect, L=line, F=fill, V=select, E=eraser, G=xray, B=brush size, [/]=brush +/-, Ctrl+Z=undo, Ctrl+Shift+Z=redo, Del=clear selection">Shortcuts</span>
+        <span id="shortcuts-hint" title="Keyboard shortcuts: P=draw, R=rect, L=line, F=fill, V=select, E=eraser, G=xray, I=info, B=brush size, [/]=brush +/-, Ctrl+Z=undo, Ctrl+Shift+Z=redo, Del=clear selection">Shortcuts</span>
         <span class="sep"></span>
         <button onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onclick="redo()" id="redo-btn" disabled title="Redo (Ctrl+Shift+Z)">↪ Redo</button>
@@ -1313,6 +1373,20 @@
         <span class="sep"></span>
         <button onclick="openPlaytest()">▶ Playtest</button>
         <span id="status"></span>
+    </div>
+
+    <div id="info-legend">
+        <b>Info Legend</b><br>
+        <span>s</span> script &nbsp;
+        <span>tsk</span> task &nbsp;
+        <span>cmp</span> completes &nbsp;
+        <span>t</span> trigger &nbsp;
+        <span>b</span> bounce &nbsp;
+        <span>w</span> wall &nbsp;
+        <span>n</span> named &nbsp;
+        <span>o</span> opaque &nbsp;
+        <span>th</span> theme &nbsp;
+        <span>c</span> custom
     </div>
 
     <div id="palette-section">
@@ -1404,7 +1478,7 @@
                         <button class="qa-key" onclick="showQuickAddKeyForm()">KEY Key</button>
                         <button class="qa-info" onclick="showQuickAddInfoForm()">(i) Info</button>
                         <button onclick="showQuickAddTreasureForm()" style="background:#887700;border-color:#aa8800;color:#fff;">Treasure Exit</button>
-                        <button class="qa-trigger" onclick="quickAddTrigger()">⚡ Trigger</button>
+                        <button class="qa-trigger" onclick="quickAddTrigger()">Trigger</button>
                         <button class="qa-block-maker" onclick="showBlockMaker()">[+] Block Maker</button>
                     </div>
                     <div class="qa-advanced-row">
@@ -1689,6 +1763,7 @@
         var skipHistory = false;
         var painted = false;
         var xrayOn = false;
+        var xrayDetailOn = false;
 
         // Tool system
         var currentTool = 'pencil';
@@ -2684,8 +2759,33 @@
 
         function toggleXray() {
             xrayOn = !xrayOn;
+            if (xrayOn) xrayDetailOn = false;
             document.getElementById('xray-btn').classList.toggle('active', xrayOn);
+            document.getElementById('xray-detail-btn').classList.remove('active');
             renderGrid();
+        }
+
+        function toggleXrayDetail() {
+            xrayDetailOn = !xrayDetailOn;
+            if (xrayDetailOn) xrayOn = false;
+            document.getElementById('xray-detail-btn').classList.toggle('active', xrayDetailOn);
+            document.getElementById('xray-btn').classList.remove('active');
+            renderGrid();
+        }
+
+        function getTileLabel(key) {
+            if (!key || key.id === 0 || key.id === undefined) return null;
+            if (key.id >= 1 && key.id <= 15) return null;
+            if (key.script) return 's';
+            if (key.isTask) return 'tsk';
+            if (key.completesTaskId > 0) return 'cmp';
+            if (key.jump || key.fore) return 't';
+            if (key.bounce > 0) return 'b';
+            if (key.solid !== undefined && key.solid !== null && key.solid !== 0) return 'w';
+            if (key.name) return 'n';
+            if (key.opaque !== undefined && key.opaque !== null && key.opaque !== 0) return 'o';
+            if (key.themeLinked) return 'th';
+            return 'c';
         }
 
         function isInBounds(x, y) {
@@ -3417,20 +3517,24 @@
             if (!a || !a.actions || a.actions.length === 0) return 'No actions';
             var labels = a.actions.map(function(act) {
                 var p = act.params || {};
+                var delayLabel = p.delay ? '[' + p.delay + 's] ' : '';
                 switch (act.type) {
-                    case 'set_solid': return 'Solid(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
-                    case 'set_colour': return 'Colour(' + p.targetId + ':' + (p.source === 'theme' ? 'Theme' + (p.themeIndex !== undefined ? '[' + p.themeIndex + ']' : '') : 'Custom') + ')';
-                    case 'set_opaque': return 'Opaque(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
-                    case 'set_bounce': return 'Bounce(' + p.targetId + ':' + p.value + ')';
-                    case 'set_jump': return 'Jump(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
-                    case 'set_fore': return 'Fore(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
-                    case 'show_message': return 'Msg';
-                    case 'complete_task': return 'Complete #' + p.taskId;
-                    case 'activate_checkpoint': return 'Checkpoint ' + p.checkpointId;
-                    case 'go_to_treasure': return 'Treasure ' + p.treasureId;
-                    case 'set_player_colour': return 'Player Colour';
-                    case 'load_map': return 'Load Map';
-                    default: return act.type;
+                    case 'set_solid': return delayLabel + 'Solid(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
+                    case 'set_colour': return delayLabel + 'Colour(' + p.targetId + ':' + (p.source === 'theme' ? 'Theme' + (p.themeIndex !== undefined ? '[' + p.themeIndex + ']' : '') : 'Custom') + ')';
+                    case 'set_opaque': return delayLabel + 'Opaque(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
+                    case 'set_bounce': return delayLabel + 'Bounce(' + p.targetId + ':' + p.value + ')';
+                    case 'set_jump': return delayLabel + 'Jump(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
+                    case 'set_fore': return delayLabel + 'Fore(' + p.targetId + ':' + (p.value ? 'on' : 'off') + ')';
+                    case 'show_message': return delayLabel + 'Msg';
+                    case 'complete_task': return delayLabel + 'Complete #' + p.taskId;
+                    case 'activate_checkpoint': return delayLabel + 'Checkpoint ' + p.checkpointId;
+                    case 'go_to_treasure': return delayLabel + 'Treasure ' + p.treasureId;
+                    case 'set_player_colour': return delayLabel + 'Player Colour';
+                    case 'load_map': return delayLabel + 'Load Map';
+                    case 'change_block': return delayLabel + 'Change ' + p.targetId + ' -> ' + p.toId;
+                    case 'change_new_block': return delayLabel + 'NewBlock(' + p.targetId + ')';
+                    case 'wait': return delayLabel + 'Wait ' + (p.duration || 1) + 's';
+                    default: return delayLabel + act.type;
                 }
             });
             return labels.join(', ');
@@ -3603,20 +3707,94 @@
             var list = document.getElementById('auto-actions-list');
             var act = { type: 'set_solid', params: { targetId: 0, value: 1 } };
             list.appendChild(buildAutoActionItem(act, list.children.length));
+            reindexAutoActions();
         }
 
         function removeAutoAction(btn) {
             var item = btn.closest('.auto-action-item');
             if (item) item.parentNode.removeChild(item);
+            reindexAutoActions();
         }
+
+        function moveAutoAction(btn, dir) {
+            var item = btn.closest('.auto-action-item');
+            if (!item) return;
+            var list = item.parentNode;
+            var idx = Array.prototype.indexOf.call(list.children, item);
+            var swap = idx + dir;
+            if (swap < 0 || swap >= list.children.length) return;
+            if (dir < 0) list.insertBefore(item, list.children[swap]);
+            else list.insertBefore(item, list.children[swap].nextSibling);
+            reindexAutoActions();
+        }
+
+        function reindexAutoActions() {
+            var list = document.getElementById('auto-actions-list');
+            var items = list.querySelectorAll('.auto-action-item');
+            items.forEach(function(item, i) {
+                item.querySelector('.auto-action-num').textContent = (i + 1) + '.';
+                var sel = item.querySelector('.auto-action-type-select');
+                var body = item.querySelector('.auto-action-body');
+                var params = {};
+                var inputs = item.querySelectorAll('[data-actparam]');
+                inputs.forEach(function(inp) {
+                    var key = inp.getAttribute('data-actparam');
+                    if (inp.type === 'checkbox') params[key] = inp.checked;
+                    else if (inp.type === 'number') params[key] = parseFloat(inp.value);
+                    else if (inp.type === 'color') params[key] = inp.value;
+                    else if (inp.tagName === 'SELECT' && inp.value !== '' && !isNaN(parseFloat(inp.value))) {
+                        params[key] = parseFloat(inp.value);
+                    } else params[key] = inp.value;
+                });
+                body.innerHTML = buildAutoActionBody(sel.value, params, i);
+            });
+        }
+
+        /* ---- Drag and drop for action items ---- */
+
+        var _dragIndex = null;
+
+        document.addEventListener('dragstart', function(e) {
+            var item = e.target.closest('.auto-action-item');
+            if (!item) return;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', '');
+            _dragIndex = Array.prototype.indexOf.call(item.parentNode.children, item);
+        });
+
+        document.addEventListener('dragover', function(e) {
+            var item = e.target.closest('.auto-action-item');
+            if (!item) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        document.addEventListener('drop', function(e) {
+            var target = e.target.closest('.auto-action-item');
+            if (!target || _dragIndex === null) return;
+            e.preventDefault();
+            var list = target.parentNode;
+            var toIdx = Array.prototype.indexOf.call(list.children, target);
+            if (_dragIndex === toIdx) { _dragIndex = null; return; }
+            var from = list.children[_dragIndex];
+            if (_dragIndex < toIdx) {
+                list.insertBefore(from, list.children[toIdx].nextSibling);
+            } else {
+                list.insertBefore(from, list.children[toIdx]);
+            }
+            _dragIndex = null;
+            reindexAutoActions();
+        });
 
         function buildAutoActionItem(act, index) {
             var item = document.createElement('div');
             item.className = 'auto-action-item';
+            item.draggable = true;
             var num = index + 1;
             var paramsHtml = buildAutoActionBody(act.type, act.params, index);
             item.innerHTML = '<div class="auto-action-header">'
                 + '<span class="auto-action-num">' + num + '.</span>'
+                + '<span class="auto-drag-handle" title="Drag to reorder">⠿</span>'
                 + '<select class="auto-action-type-select" onchange="updateAutoActionFields(this)">'
                 + '<option value="set_solid"' + (act.type === 'set_solid' ? ' selected' : '') + '>Set Solid</option>'
                 + '<option value="set_colour"' + (act.type === 'set_colour' ? ' selected' : '') + '>Set Colour</option>'
@@ -3629,7 +3807,12 @@
                 + '<option value="activate_checkpoint"' + (act.type === 'activate_checkpoint' ? ' selected' : '') + '>Activate Checkpoint</option>'
                 + '<option value="go_to_treasure"' + (act.type === 'go_to_treasure' ? ' selected' : '') + '>Go to Treasure</option>'
                 + '<option value="set_player_colour"' + (act.type === 'set_player_colour' ? ' selected' : '') + '>Set Player Colour</option>'
+                + '<option value="change_block"' + (act.type === 'change_block' ? ' selected' : '') + '>Change to existing</option>'
+                + '<option value="change_new_block"' + (act.type === 'change_new_block' ? ' selected' : '') + '>Change to new block</option>'
+                + '<option value="wait"' + (act.type === 'wait' ? ' selected' : '') + '>Wait</option>'
                 + '</select>'
+                + '<button class="auto-move-up" onclick="moveAutoAction(this, -1)" title="Move up">▲</button>'
+                + '<button class="auto-move-down" onclick="moveAutoAction(this, 1)" title="Move down">▼</button>'
                 + '<button class="auto-remove-action" onclick="removeAutoAction(this)">✕</button>'
                 + '</div>'
                 + '<div class="auto-action-body">' + paramsHtml + '</div>';
@@ -3646,7 +3829,7 @@
         var _themeIndexLabels = ['BG', 'Floor', 'Brick', 'Ice', 'Platform', 'SuperBnc', 'Wall', 'Trigger', 'Goal', 'Death', 'BrickSol', 'Unlock', 'Door', 'Key'];
 
         function makeActionPickSelector(index, param) {
-            return '#auto-actions-list .auto-action-item:nth-child(' + (index + 1) + ') [data-actparam=&quot;' + param + '&quot;]';
+            return '#auto-actions-list .auto-action-item:nth-child(' + (index + 1) + ') [data-actparam=' + param + ']';
         }
 
         function buildAutoActionBody(type, params, actionIndex) {
@@ -3704,12 +3887,87 @@
                     return '<label>Treasure ID: <input type="number" data-actparam="treasureId" value="' + (p.treasureId || 1) + '" min="1" style="width:52px"></label>';
                 case 'set_player_colour':
                     return '<label>Colour: <input type="color" data-actparam="colour" value="' + esc(p.colour || '#FF9900') + '"></label>';
+                case 'change_block':
+                    var toId = p.toId || 0;
+                    var themeCol = function(id) {
+                        var k = mapData ? mapData.keys.find(function(k2) { return k2.id === id; }) : null;
+                        return k ? k.colour : '#555';
+                    };
+                    var presets = [
+                        { id: 2,  label: 'Solid Bounce' },
+                        { id: 10, label: 'Solid No Bnc' },
+                        { id: 1,  label: 'Floor' },
+                        { id: 4,  label: 'Platform' },
+                        { id: 3,  label: 'Ice / Jump' },
+                        { id: 5,  label: 'Super Bnc' },
+                        { id: 6,  label: 'Wall' },
+                        { id: 14, label: 'Fade Floor' },
+                        { id: 15, label: 'Group Fade' },
+                    ];
+                    var gridHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin:4px 0;">';
+                    presets.forEach(function(pr) {
+                        var col = themeCol(pr.id);
+                        var sel = pr.id === toId ? ' style="outline:2px solid #fff;"' : '';
+                        gridHtml += '<button type="button" class="auto-preset-btn" data-id="' + pr.id + '"'+ sel +' onclick="var p=this.parentNode;var inp=p.previousSibling.querySelector(\'[data-actparam=toId]\');if(inp){inp.value=' + pr.id + ';p.querySelectorAll(\'.auto-preset-btn\').forEach(function(b){b.style.outline=\'none\';});this.style.outline=\'2px solid #fff\';}" style="display:flex;flex-direction:column;align-items:center;padding:4px 2px;font-size:9px;cursor:pointer;border-radius:3px;background:#1a1a1a;border:1px solid #444;color:#ddd;min-height:40px;">'
+                            + '<span style="width:16px;height:16px;border-radius:2px;border:1px solid #555;background:' + col + ';flex-shrink:0;margin-bottom:2px;"></span>'
+                            + '<span>' + pr.label + '</span>'
+                            + '</button>';
+                    });
+                    gridHtml += '</div>';
+                    return '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">'
+                        + '<label>Find ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:36px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
+                        + '<input type="hidden" data-actparam="toId" value="' + toId + '">'
+                        + '</div>'
+                        + gridHtml;
+                case 'wait':
+                    return '<label>Duration: <input type="number" data-actparam="duration" value="' + (p.duration || 1) + '" min="0.1" step="0.5" style="width:44px"> seconds</label>';
+                case 'change_new_block':
+                    var colSource = p.newColSource || 'custom';
+                    var colThemeIdx = p.newColThemeIdx !== undefined ? p.newColThemeIdx : 0;
+                    var custCol = p.newColour || '#FF9900';
+                    var themeOpts2 = '';
+                    for (var j = 0; j < _themeIndexLabels.length; j++) {
+                        var c2 = '#555';
+                        if (mapData && mapData.themePalette && mapData.themePalette[j]) c2 = mapData.themePalette[j];
+                        var sel2 = j === colThemeIdx ? ' selected' : '';
+                        themeOpts2 += '<option value="' + j + '"' + sel2 + '>' + _themeIndexLabels[j] + ' (' + j + ')</option>';
+                    }
+                    return '<div style="display:flex;flex-wrap:wrap;gap:4px;font-size:11px;align-items:center;">'
+                        + '<label>Find ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:36px"></label>'
+                        + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
+                        + '<br>'
+                        + '<label>Colour src: <select data-actparam="newColSource" onchange="var n=this.closest(\'.auto-action-body\');n.querySelector(\'.nb-theme-row\').style.display=this.value===\'theme\'?\'\':\'none\';n.querySelector(\'.nb-custom-row\').style.display=this.value===\'custom\'?\'\':\'none\';">'
+                        + '<option value="theme"' + (colSource === 'theme' ? ' selected' : '') + '>Theme</option>'
+                        + '<option value="custom"' + (colSource === 'custom' ? ' selected' : '') + '>Custom</option>'
+                        + '</select></label>'
+                        + '<label class="nb-theme-row" style="display:' + (colSource === 'theme' ? '' : 'none') + '">Idx: <select data-actparam="newColThemeIdx">' + themeOpts2 + '</select></label>'
+                        + '<label class="nb-custom-row" style="display:' + (colSource === 'custom' ? '' : 'none') + '">Colour: <input type="color" data-actparam="newColour" value="' + esc(custCol) + '"></label>'
+                        + '<label><input type="checkbox" data-actparam="newSolid" ' + (p.newSolid ? 'checked' : '') + '> Solid</label>'
+                        + '<label><input type="checkbox" data-actparam="newOpaque" ' + (p.newOpaque ? 'checked' : '') + '> Opaque</label>'
+                        + '<label>Bnc: <input type="number" data-actparam="newBounce" value="' + (p.newBounce || 0) + '" step="0.05" min="0" style="width:36px"></label>'
+                        + '<label><input type="checkbox" data-actparam="newJump" ' + (p.newJump ? 'checked' : '') + '> Jump</label>'
+                        + '<label><input type="checkbox" data-actparam="newFore" ' + (p.newFore ? 'checked' : '') + '> Fore</label>'
+                        + '<label>Name: <input type="text" data-actparam="newName" value="' + esc(p.newName || '') + '" style="width:72px"></label>'
+                        + '</div>';
                 default:
                     return '';
             }
         }
 
         /* ---- In-map picker for automations ---- */
+
+        document.getElementById('xray-detail-btn').addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            var legend = document.getElementById('info-legend');
+            var shown = legend.style.display === 'block';
+            legend.style.display = shown ? 'none' : 'block';
+        });
+        document.addEventListener('click', function(e) {
+            if (e.target.id !== 'xray-detail-btn') {
+                document.getElementById('info-legend').style.display = 'none';
+            }
+        });
 
         document.getElementById('auto-picker-back').addEventListener('click', function() {
             pickingForAutomation = false;
@@ -3768,6 +4026,26 @@
                         ctx.textBaseline = 'middle';
                         ctx.strokeText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
                         ctx.fillText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+                    }
+                    if (xrayDetailOn && id !== undefined && id !== null) {
+                        var kd = mapData.keys.find(function(k) { return k.id === id; });
+                        var label = getTileLabel(kd);
+                        if (label) {
+                            ctx.fillStyle = '#ff0';
+                            ctx.strokeStyle = '#000';
+                            ctx.lineWidth = 3;
+                            ctx.font = 'bold 10px monospace';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.strokeText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+                            ctx.fillText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+                            ctx.font = 'bold 8px monospace';
+                            ctx.fillStyle = '#ff0';
+                            ctx.strokeStyle = '#000';
+                            ctx.lineWidth = 2;
+                            ctx.strokeText(label, x * TILE + TILE - 4, y * TILE + 3);
+                            ctx.fillText(label, x * TILE + TILE - 4, y * TILE + 3);
+                        }
                     }
                 }
             }
@@ -3845,6 +4123,36 @@
             ctx.strokeStyle = '#444';
             ctx.lineWidth = 0.5;
             ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
+            if (xrayOn && id !== undefined && id !== null) {
+                ctx.fillStyle = '#fff';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 3;
+                ctx.font = 'bold 10px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.strokeText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+                ctx.fillText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+            }
+            if (xrayDetailOn && id !== undefined && id !== null) {
+                var key = mapData.keys.find(function(k) { return k.id === id; });
+                var label = getTileLabel(key);
+                if (label) {
+                    ctx.fillStyle = '#ff0';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 3;
+                    ctx.font = 'bold 10px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.strokeText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+                    ctx.fillText(id, x * TILE + TILE / 2, y * TILE + TILE / 2 - 1);
+                    ctx.font = 'bold 8px monospace';
+                    ctx.fillStyle = '#ff0';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeText(label, x * TILE + TILE - 4, y * TILE + 3);
+                    ctx.fillText(label, x * TILE + TILE - 4, y * TILE + 3);
+                }
+            }
         }
 
         function pickSpawn() {
@@ -4535,6 +4843,7 @@
             playtestGame = new Clarity();
             playtestGame.set_viewport(ptVW, ptVH);
             playtestGame.limit_viewport = true;
+            playtestGame.source_map = JSON.parse(JSON.stringify(mapCopy));
             playtestGame.load_map(mapCopy);
 
             var canvas = document.getElementById('playtest-canvas');
@@ -4679,6 +4988,7 @@
                 case 'v': case 'V': setTool('select'); e.preventDefault(); break;
                 case 'e': case 'E': setTool('eraser'); e.preventDefault(); break;
                 case 'g': case 'G': toggleXray(); e.preventDefault(); break;
+                case 'i': case 'I': toggleXrayDetail(); e.preventDefault(); break;
                 case 'b': case 'B':
                     brushSize = Math.min(9, brushSize + 1);
                     updateBrushLabel();

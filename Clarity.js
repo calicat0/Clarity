@@ -764,66 +764,118 @@ Clarity.prototype.executeAutomationActions = function (actions) {
     if (!actions || !this.current_map) return;
     var map = this.current_map;
     var self = this;
-    actions.forEach(function (action) {
+
+    function executeOne(index) {
+        if (index >= actions.length) return;
+        var action = actions[index];
         var p = action.params || {};
-        switch (action.type) {
-            case 'set_solid': {
-                var k = map.keys.find(function (k) { return k.id === p.targetId; });
-                if (k) k.solid = p.value ? 1 : 0;
-                break;
-            }
-            case 'set_colour': {
-                var k = map.keys.find(function (k) { return k.id === p.targetId; });
-                if (!k) break;
-                if (p.source === 'theme' && map.themePalette && map.themePalette[p.themeIndex] !== undefined) {
-                    k.colour = map.themePalette[p.themeIndex];
-                } else if (p.colour) {
-                    k.colour = p.colour;
+        var delay = action.type === 'wait' ? ((p.duration || 1) * 1000) : 0;
+
+        function doAction() {
+            switch (action.type) {
+                case 'set_solid': {
+                    var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                    if (k) k.solid = p.value ? 1 : 0;
+                    break;
                 }
-                break;
+                case 'set_colour': {
+                    var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                    if (!k) break;
+                    if (p.source === 'theme' && map.themePalette && map.themePalette[p.themeIndex] !== undefined) {
+                        k.colour = map.themePalette[p.themeIndex];
+                    } else if (p.colour) {
+                        k.colour = p.colour;
+                    }
+                    break;
+                }
+                case 'set_opaque': {
+                    var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                    if (k) k.opaque = p.value ? 1 : 0;
+                    break;
+                }
+                case 'set_bounce': {
+                    var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                    if (k) k.bounce = p.value || 0;
+                    break;
+                }
+                case 'set_jump': {
+                    var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                    if (k) k.jump = p.value ? 1 : 0;
+                    break;
+                }
+                case 'set_fore': {
+                    var k = map.keys.find(function (k) { return k.id === p.targetId; });
+                    if (k) k.fore = p.value ? 1 : 0;
+                    break;
+                }
+                case 'show_message': {
+                    self.showMessage(p.message || '');
+                    break;
+                }
+                case 'complete_task': {
+                    self.completeTask(p.taskId);
+                    break;
+                }
+                case 'activate_checkpoint': {
+                    self.activateCheckpoint(p.checkpointId);
+                    break;
+                }
+                case 'go_to_treasure': {
+                    self.goToTreasure(p.treasureId);
+                    break;
+                }
+                case 'set_player_colour': {
+                    if (p.colour) self.player.colour = p.colour;
+                    break;
+                }
+                case 'change_block': {
+                    if (p.targetId !== undefined && p.targetId !== null && p.toId !== undefined) {
+                        var srcKey = map.keys.find(function(k) { return k.id === p.targetId; });
+                        var dstKey = map.keys.find(function(k) { return k.id === p.toId; });
+                        if (srcKey && dstKey) {
+                            for (var y = 0; y < map.data.length; y++) {
+                                for (var x = 0; x < map.data[y].length; x++) {
+                                    if (map.data[y][x] === srcKey) {
+                                        map.data[y][x] = dstKey;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+                case 'wait': {
+                    // Just pause; executeOne will be called after the delay via setTimeout
+                    break;
+                }
+                case 'change_new_block': {
+                    var srcKey = map.keys.find(function(k) { return k.id === p.targetId; });
+                    if (!srcKey) break;
+                    if (p.newColSource === 'theme' && map.themePalette && map.themePalette[p.newColThemeIdx] !== undefined) {
+                        srcKey.colour = map.themePalette[p.newColThemeIdx];
+                    } else if (p.newColour) {
+                        srcKey.colour = p.newColour;
+                    }
+                    srcKey.solid = p.newSolid ? 1 : 0;
+                    srcKey.opaque = p.newOpaque ? 1 : 0;
+                    srcKey.bounce = p.newBounce || 0;
+                    srcKey.jump = p.newJump ? 1 : 0;
+                    srcKey.fore = p.newFore ? 1 : 0;
+                    if (p.newName) srcKey.name = p.newName;
+                    break;
+                }
             }
-            case 'set_opaque': {
-                var k = map.keys.find(function (k) { return k.id === p.targetId; });
-                if (k) k.opaque = p.value ? 1 : 0;
-                break;
-            }
-            case 'set_bounce': {
-                var k = map.keys.find(function (k) { return k.id === p.targetId; });
-                if (k) k.bounce = p.value || 0;
-                break;
-            }
-            case 'set_jump': {
-                var k = map.keys.find(function (k) { return k.id === p.targetId; });
-                if (k) k.jump = p.value ? 1 : 0;
-                break;
-            }
-            case 'set_fore': {
-                var k = map.keys.find(function (k) { return k.id === p.targetId; });
-                if (k) k.fore = p.value ? 1 : 0;
-                break;
-            }
-            case 'show_message': {
-                self.showMessage(p.message || '');
-                break;
-            }
-            case 'complete_task': {
-                self.completeTask(p.taskId);
-                break;
-            }
-            case 'activate_checkpoint': {
-                self.activateCheckpoint(p.checkpointId);
-                break;
-            }
-            case 'go_to_treasure': {
-                self.goToTreasure(p.treasureId);
-                break;
-            }
-            case 'set_player_colour': {
-                if (p.colour) self.player.colour = p.colour;
-                break;
-            }
+            executeOne(index + 1);
         }
-    });
+
+        if (delay > 0) {
+            setTimeout(doAction, delay);
+        } else {
+            doAction();
+        }
+    }
+
+    executeOne(0);
 };
 
 Clarity.prototype.update = function () {
@@ -1199,11 +1251,12 @@ Clarity.prototype.handleDeath = function () {
     this.key.up = false;
     this.showMessage("You died!");
     if (this.checkpoint) {
+        // Keep oneTimeTriggered — triggers already passed are done
         var cp = this.checkpoint;
         if (this.modularData) {
             this.loadModularMap(this.modularIndex);
         } else if (this.source_map) {
-            this.load_map(this.source_map);
+            this.load_map(JSON.parse(JSON.stringify(this.source_map)));
         }
         this.player.loc.x = cp.playerX;
         this.player.loc.y = cp.playerY;
@@ -1216,10 +1269,11 @@ Clarity.prototype.handleDeath = function () {
             }
         }, this);
     } else {
+        this.oneTimeTriggered = {};
         if (this.modularData) {
             this.loadModularMap(this.modularIndex);
         } else if (this.source_map) {
-            this.load_map(this.source_map);
+            this.load_map(JSON.parse(JSON.stringify(this.source_map)));
         }
     }
 };
