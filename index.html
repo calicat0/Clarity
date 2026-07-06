@@ -273,10 +273,13 @@
         }
         #touch-left {
             width: 15%;
-            margin-left: 50%;
         }
         #touch-right {
             width: 15%;
+        }
+        .touch-spacer {
+            flex: 1;
+            pointer-events: none;
         }
         #touch-jump {
             width: 20%;
@@ -778,6 +781,7 @@
                 <div id="touch-right" class="touch-zone" data-zone="right">
                     <span class="touch-zone-label">▶</span>
                 </div>
+                <div id="touch-spacer" class="touch-spacer"></div>
                 <div id="touch-jump" class="touch-zone" data-zone="jump">
                     <span class="touch-zone-label">▲</span>
                 </div>
@@ -1470,9 +1474,9 @@
 
         function getTouchZone(clientX, clientY) {
             var w = window.innerWidth;
-            if (clientX < w * 0.5) return null;
-            if (clientX < w * 0.65) return 'left';
-            if (clientX < w * 0.8) return 'right';
+            if (clientX < w * 0.15) return 'left';
+            if (clientX < w * 0.30) return 'right';
+            if (clientX < w * 0.80) return null;
             return 'jump';
         }
 
