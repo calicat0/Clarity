@@ -272,13 +272,14 @@
             position: relative;
         }
         #touch-left {
-            width: 30%;
+            width: 15%;
+            margin-left: 50%;
         }
         #touch-right {
-            width: 30%;
+            width: 15%;
         }
         #touch-jump {
-            width: 40%;
+            width: 20%;
         }
         .touch-zone-label {
             pointer-events: none;
@@ -1469,8 +1470,9 @@
 
         function getTouchZone(clientX, clientY) {
             var w = window.innerWidth;
-            if (clientX < w * 0.3) return 'left';
-            if (clientX < w * 0.6) return 'right';
+            if (clientX < w * 0.5) return null;
+            if (clientX < w * 0.65) return 'left';
+            if (clientX < w * 0.8) return 'right';
             return 'jump';
         }
 
