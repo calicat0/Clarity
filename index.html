@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Clarity</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
@@ -244,6 +245,48 @@
             transition: opacity 0.3s;
         }
         #game-area.zen #game-controls-hint {
+            opacity: 0;
+        }
+
+        #mobile-controls {
+            position: absolute;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            flex-direction: row;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        #mobile-controls.visible {
+            display: flex;
+        }
+        .touch-zone {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+        }
+        #touch-left {
+            width: 30%;
+        }
+        #touch-right {
+            width: 30%;
+        }
+        #touch-jump {
+            width: 40%;
+        }
+        .touch-zone-label {
+            pointer-events: none;
+            font-family: monospace;
+            font-size: 32px;
+            color: rgba(255,255,255,0.12);
+            text-shadow: 0 0 12px rgba(0,0,0,0.5);
+            margin-bottom: -36px;
             opacity: 0;
         }
 
@@ -726,6 +769,17 @@
         <div id="game-area">
             <div id="canvas-wrap">
                 <canvas id="canvas"></canvas>
+            </div>
+            <div id="mobile-controls">
+                <div id="touch-left" class="touch-zone" data-zone="left">
+                    <span class="touch-zone-label">◀</span>
+                </div>
+                <div id="touch-right" class="touch-zone" data-zone="right">
+                    <span class="touch-zone-label">▶</span>
+                </div>
+                <div id="touch-jump" class="touch-zone" data-zone="jump">
+                    <span class="touch-zone-label">▲</span>
+                </div>
             </div>
             <div id="game-controls-hint">Arrow keys to move</div>
         </div>
@@ -1372,11 +1426,133 @@
             document.getElementById('topbar').style.display = zenMode ? 'none' : '';
             document.getElementById('zen-btn').classList.toggle('active', zenMode);
             document.getElementById('zen-btn').textContent = zenMode ? '◉ Exit Zen' : '◉ Zen';
+
+            if (isMobile) {
+                var mc = document.getElementById('mobile-controls');
+                if (zenMode) {
+                    mc.classList.add('visible');
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen().catch(function(){});
+                    }
+                    if (screen.orientation && screen.orientation.lock) {
+                        screen.orientation.lock('landscape').catch(function(){});
+                    }
+                } else {
+                    mc.classList.remove('visible');
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen().catch(function(){});
+                    }
+                }
+            }
         }
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && zenMode) toggleZen();
         });
+
+        /* ---- Mobile Detection & Touch Controls ---- */
+
+        var isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
+
+        if (isMobile) {
+            document.getElementById('game-controls-hint').textContent = 'Tap Zen, then use touch to move';
+
+            document.addEventListener('fullscreenchange', function () {
+                if (!document.fullscreenElement && zenMode) {
+                    toggleZen();
+                }
+            });
+        }
+
+        var zoneKeyMap = { left: 'left', right: 'right', jump: 'up' };
+        var activeTouches = {};
+
+        function getTouchZone(clientX, clientY) {
+            var w = window.innerWidth;
+            if (clientX < w * 0.3) return 'left';
+            if (clientX < w * 0.6) return 'right';
+            return 'jump';
+        }
+
+        function touchZoneUpdate(el, active) {
+            if (el) el.classList.toggle('active', active);
+        }
+
+        if (isMobile) {
+            document.addEventListener('touchstart', function (e) {
+                if (!zenMode) return;
+                e.preventDefault();
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    var t = e.changedTouches[i];
+                    var zone = getTouchZone(t.clientX, t.clientY);
+                    if (zone) {
+                        activeTouches[t.identifier] = zone;
+                        game.key[zoneKeyMap[zone]] = true;
+                        touchZoneUpdate(document.getElementById('touch-' + zone), true);
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchend', function (e) {
+                if (!zenMode) return;
+                e.preventDefault();
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    var t = e.changedTouches[i];
+                    var zone = activeTouches[t.identifier];
+                    if (zone) {
+                        delete activeTouches[t.identifier];
+                        var stillActive = false;
+                        for (var id in activeTouches) {
+                            if (activeTouches[id] === zone) { stillActive = true; break; }
+                        }
+                        if (!stillActive) {
+                            game.key[zoneKeyMap[zone]] = false;
+                            touchZoneUpdate(document.getElementById('touch-' + zone), false);
+                        }
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchcancel', function (e) {
+                if (!zenMode) return;
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    var t = e.changedTouches[i];
+                    var zone = activeTouches[t.identifier];
+                    if (zone) {
+                        delete activeTouches[t.identifier];
+                        game.key[zoneKeyMap[zone]] = false;
+                        touchZoneUpdate(document.getElementById('touch-' + zone), false);
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchmove', function (e) {
+                if (!zenMode) return;
+                e.preventDefault();
+                for (var i = 0; i < e.changedTouches.length; i++) {
+                    var t = e.changedTouches[i];
+                    var oldZone = activeTouches[t.identifier];
+                    var newZone = getTouchZone(t.clientX, t.clientY);
+                    if (oldZone !== newZone) {
+                        if (oldZone) {
+                            var stillActive = false;
+                            for (var id in activeTouches) {
+                                if (id !== String(t.identifier) && activeTouches[id] === oldZone) { stillActive = true; break; }
+                            }
+                            if (!stillActive) {
+                                game.key[zoneKeyMap[oldZone]] = false;
+                                touchZoneUpdate(document.getElementById('touch-' + oldZone), false);
+                            }
+                        }
+                        if (newZone) {
+                            activeTouches[t.identifier] = newZone;
+                            game.key[zoneKeyMap[newZone]] = true;
+                            touchZoneUpdate(document.getElementById('touch-' + newZone), true);
+                        }
+                    }
+                }
+            }, { passive: false });
+        }
 
         /* ---- Zoom ---- */
 
