@@ -862,6 +862,93 @@ Clarity.prototype.executeAutomationActions = function (actions) {
                     srcKey.jump = p.newJump ? 1 : 0;
                     srcKey.fore = p.newFore ? 1 : 0;
                     if (p.newName) srcKey.name = p.newName;
+                    if (p.newLightPasses !== undefined) srcKey.lightPasses = p.newLightPasses ? true : undefined;
+                    if (p.newIsDeath) {
+                        srcKey.script = 'death';
+                        srcKey.solid = 0;
+                    } else if (srcKey.script === 'death') {
+                        delete srcKey.script;
+                    }
+                    if (p.newFrictionX || p.newFrictionY) {
+                        srcKey.friction = { x: p.newFrictionX || 0, y: p.newFrictionY || 0 };
+                    } else {
+                        delete srcKey.friction;
+                    }
+                    if (p.newGravityX || p.newGravityY) {
+                        srcKey.gravity = { x: p.newGravityX || 0, y: p.newGravityY || 0 };
+                    } else {
+                        delete srcKey.gravity;
+                    }
+                    srcKey.isKey = p.newIsKey ? true : undefined;
+                    srcKey.unlocks = (p.newIsKey && p.newUnlocks) ? p.newUnlocks : undefined;
+                    srcKey.isDoor = p.newIsDoor ? true : undefined;
+                    srcKey.lockKey = (p.newIsDoor && p.newLockKey) ? p.newLockKey : undefined;
+                    if (p.newFade) {
+                        srcKey.fade = 1;
+                        srcKey.fadeDelay = p.newFadeDelay || 0.5;
+                        srcKey.fadeDuration = p.newFadeDuration || 0.4;
+                        srcKey.fadeRespawn = p.newFadeRespawn || 3;
+                        srcKey.groupFade = p.newGroupFade ? 1 : undefined;
+                    } else {
+                        delete srcKey.fade;
+                        delete srcKey.fadeDelay;
+                        delete srcKey.fadeDuration;
+                        delete srcKey.fadeRespawn;
+                        delete srcKey.groupFade;
+                    }
+                    if (p.newIsTreasureExit && p.newTreasureTargetId) {
+                        srcKey.isTreasureExit = true;
+                        srcKey.treasureTargetId = p.newTreasureTargetId;
+                    } else {
+                        delete srcKey.isTreasureExit;
+                        delete srcKey.treasureTargetId;
+                    }
+                    if (p.newIsCheckpoint) {
+                        srcKey.isCheckpoint = true;
+                        srcKey.solid = 0;
+                        srcKey.saveDoorStates = p.newSaveDoorStates !== false;
+                        srcKey.respawnMessage = p.newRespawnMsg || undefined;
+                        srcKey.oneTimeOnly = p.newOneTimeOnly !== false;
+                        srcKey.extraCommand = p.newExtraCommand ? true : undefined;
+                        srcKey.extraTargetId = p.newExtraTargetId || undefined;
+                        srcKey.extraTargetColour = p.newExtraTargetColour || undefined;
+                    } else {
+                        delete srcKey.isCheckpoint;
+                        delete srcKey.saveDoorStates;
+                        delete srcKey.respawnMessage;
+                        delete srcKey.oneTimeOnly;
+                        delete srcKey.extraCommand;
+                        delete srcKey.extraTargetId;
+                        delete srcKey.extraTargetColour;
+                    }
+                    if (p.newIsTask) {
+                        srcKey.isTask = true;
+                        srcKey.taskId = p.newTaskId || srcKey.id;
+                        srcKey.taskType = p.newTaskType || 'persistent';
+                        srcKey.taskMessage = p.newTaskMsg || ('Task ' + srcKey.taskId);
+                        srcKey.taskOneTime = p.newTaskOnce !== false;
+                        if (p.newTaskType === 'timeout') srcKey.taskDuration = p.newTaskDuration || 5;
+                    } else {
+                        delete srcKey.isTask;
+                        delete srcKey.taskId;
+                        delete srcKey.taskType;
+                        delete srcKey.taskMessage;
+                        delete srcKey.taskDuration;
+                        delete srcKey.taskOneTime;
+                    }
+                    if (p.newCompletesTaskId) {
+                        srcKey.completesTaskId = p.newCompletesTaskId;
+                    } else {
+                        delete srcKey.completesTaskId;
+                    }
+                    if (srcKey.script === 'death') {
+                        var px = Math.round(self.player.loc.x / self.tile_size);
+                        var py = Math.round(self.player.loc.y / self.tile_size);
+                        var playerTile = map.data[py] && map.data[py][px];
+                        if (playerTile === srcKey) {
+                            self.handleDeath();
+                        }
+                    }
                     break;
                 }
             }

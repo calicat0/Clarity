@@ -1303,6 +1303,53 @@
             background: #2a2a3a;
             color: #ddd;
         }
+        .auto-copy-action {
+            font-size: 9px;
+            padding: 1px 4px;
+            cursor: pointer;
+            background: #1a2a1a;
+            border: 1px solid #3a5a3a;
+            color: #aaa;
+        }
+        .auto-copy-action:hover {
+            background: #2a4a2a;
+            color: #fff;
+        }
+        .theme-picker-popup {
+            position: absolute;
+            background: #1a1a1a;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 3px;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            z-index: 1000;
+        }
+        .theme-picker-popup button {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #444;
+            border-radius: 2px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .theme-picker-popup button:hover {
+            border-color: #fff;
+        }
+        .theme-pick-btn {
+            font-size: 9px;
+            padding: 1px 3px;
+            cursor: pointer;
+            background: #222;
+            border: 1px solid #555;
+            color: #aaa;
+            margin-left: 2px;
+        }
+        .theme-pick-btn:hover {
+            background: #333;
+            color: #fff;
+        }
         .auto-add-action-btn {
             font-size: 10px;
             padding: 2px 8px;
@@ -1560,7 +1607,7 @@
                 <div class="prop-row">
                     <label>Name: <input type="text" id="custom-name" placeholder="e.g. Red Key" style="width:140px"></label>
                     <label>ID: <span id="custom-id-display">12</span> (auto)</label>
-                    <label>Colour: <input type="color" id="custom-colour" value="#FF0000"></label>
+                    <label>Colour: <input type="color" id="custom-colour" value="#FF0000"><button class="theme-pick-btn" onclick="showThemePicker(document.getElementById('custom-colour'))" title="Pick from theme">T</button></label>
                 </div>
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-solid"> Solid</label>
@@ -1585,7 +1632,7 @@
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-colour-change"> Colour Change</label>
                     <label><input type="radio" name="cc-mode" id="cc-random" checked> Random</label>
-                    <label><input type="radio" name="cc-mode" id="cc-custom"> Custom: <input type="color" id="custom-cc-colour" value="#FF9900"></label>
+                    <label><input type="radio" name="cc-mode" id="cc-custom"> Custom: <input type="color" id="custom-cc-colour" value="#FF9900"><button class="theme-pick-btn" onclick="showThemePicker(document.getElementById('custom-cc-colour'))" title="Pick from theme">T</button></label>
                 </div>
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-is-death"> Is Death (kill player, auto non-solid)</label>
@@ -1615,7 +1662,7 @@
                 <div class="prop-row" id="cp-extra-row" style="display:none">
                     <label><input type="checkbox" id="custom-cp-extra"> Extra: change colour</label>
                     <label>of ID: <input type="number" id="custom-cp-extra-id" style="width:48px"></label>
-                    <label>to: <input type="color" id="custom-cp-extra-colour"></label>
+                    <label>to: <input type="color" id="custom-cp-extra-colour"><button class="theme-pick-btn" onclick="showThemePicker(document.getElementById('custom-cp-extra-colour'))" title="Pick from theme">T</button></label>
                 </div>
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-has-task" onchange="toggleTaskFields()"> Has Task</label>
@@ -3532,7 +3579,7 @@
                     case 'set_player_colour': return delayLabel + 'Player Colour';
                     case 'load_map': return delayLabel + 'Load Map';
                     case 'change_block': return delayLabel + 'Change ' + p.targetId + ' -> ' + p.toId;
-                    case 'change_new_block': return delayLabel + 'NewBlock(' + p.targetId + ')';
+                    case 'change_new_block': return delayLabel + 'NewBlock(' + p.targetId + (p.newIsDeath ? ',death' : '') + ')';
                     case 'wait': return delayLabel + 'Wait ' + (p.duration || 1) + 's';
                     default: return delayLabel + act.type;
                 }
@@ -3655,6 +3702,37 @@
             if (auto) { auto.enabled = enabled; pushHistory(); }
         }
 
+        function showThemePicker(inputEl) {
+            var existing = document.getElementById('theme-picker-active');
+            if (existing) existing.parentNode.removeChild(existing);
+            if (!mapData || !mapData.themePalette) return;
+            var popup = document.createElement('div');
+            popup.className = 'theme-picker-popup';
+            popup.id = 'theme-picker-active';
+            var rect = inputEl.getBoundingClientRect();
+            popup.style.left = rect.left + 'px';
+            popup.style.top = (rect.bottom + 2) + 'px';
+            mapData.themePalette.forEach(function(col, idx) {
+                var btn = document.createElement('button');
+                btn.style.background = col || '#555';
+                btn.title = (window._themeIndexLabels && window._themeIndexLabels[idx] ? window._themeIndexLabels[idx] + ' (' + idx + ')' : 'Index ' + idx);
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    inputEl.value = col;
+                    if (popup.parentNode) popup.parentNode.removeChild(popup);
+                };
+                popup.appendChild(btn);
+            });
+            document.body.appendChild(popup);
+            function close(e) {
+                if (!popup.contains(e.target) && e.target !== inputEl && e.target !== inputEl.nextSibling) {
+                    if (popup.parentNode) popup.parentNode.removeChild(popup);
+                    document.removeEventListener('mousedown', close);
+                }
+            }
+            setTimeout(function() { document.addEventListener('mousedown', close); }, 0);
+        }
+
         /* Automation trigger fields */
 
         function updateAutoTriggerFields() {
@@ -3713,6 +3791,33 @@
         function removeAutoAction(btn) {
             var item = btn.closest('.auto-action-item');
             if (item) item.parentNode.removeChild(item);
+            reindexAutoActions();
+        }
+
+        function copyAutoAction(btn, toBottom) {
+            var item = btn.closest('.auto-action-item');
+            if (!item) return;
+            var type = item.querySelector('.auto-action-type-select').value;
+            var params = {};
+            var inputs = item.querySelectorAll('[data-actparam]');
+            inputs.forEach(function(inp) {
+                var key = inp.getAttribute('data-actparam');
+                if (inp.type === 'checkbox') params[key] = inp.checked;
+                else if (inp.type === 'number') params[key] = parseFloat(inp.value);
+                else if (inp.type === 'color') params[key] = inp.value;
+                else if (inp.tagName === 'SELECT' && inp.value !== '' && !isNaN(parseFloat(inp.value))) {
+                    params[key] = parseFloat(inp.value);
+                } else params[key] = inp.value;
+            });
+            var list = item.parentNode;
+            if (toBottom) {
+                var copy = buildAutoActionItem({ type: type, params: params }, list.children.length);
+                list.appendChild(copy);
+            } else {
+                var idx = Array.prototype.indexOf.call(list.children, item);
+                var copy = buildAutoActionItem({ type: type, params: params }, idx + 1);
+                list.insertBefore(copy, item.nextSibling);
+            }
             reindexAutoActions();
         }
 
@@ -3813,6 +3918,8 @@
                 + '</select>'
                 + '<button class="auto-move-up" onclick="moveAutoAction(this, -1)" title="Move up">▲</button>'
                 + '<button class="auto-move-down" onclick="moveAutoAction(this, 1)" title="Move down">▼</button>'
+                + '<button class="auto-copy-action" onclick="copyAutoAction(this, true)" title="Copy to bottom">Copy ↓</button>'
+                + '<button class="auto-copy-action" onclick="copyAutoAction(this)" title="Copy after this">Copy</button>'
                 + '<button class="auto-remove-action" onclick="removeAutoAction(this)">✕</button>'
                 + '</div>'
                 + '<div class="auto-action-body">' + paramsHtml + '</div>';
@@ -3886,7 +3993,7 @@
                 case 'go_to_treasure':
                     return '<label>Treasure ID: <input type="number" data-actparam="treasureId" value="' + (p.treasureId || 1) + '" min="1" style="width:52px"></label>';
                 case 'set_player_colour':
-                    return '<label>Colour: <input type="color" data-actparam="colour" value="' + esc(p.colour || '#FF9900') + '"></label>';
+                    return '<label>Colour: <input type="color" data-actparam="colour" value="' + esc(p.colour || '#FF9900') + '"><button class="theme-pick-btn" onclick="showThemePicker(this.parentNode.querySelector(\'input[type=color]\'))" title="Pick from theme">T</button></label>';
                 case 'change_block':
                     var toId = p.toId || 0;
                     var themeCol = function(id) {
@@ -3933,22 +4040,80 @@
                         var sel2 = j === colThemeIdx ? ' selected' : '';
                         themeOpts2 += '<option value="' + j + '"' + sel2 + '>' + _themeIndexLabels[j] + ' (' + j + ')</option>';
                     }
-                    return '<div style="display:flex;flex-wrap:wrap;gap:4px;font-size:11px;align-items:center;">'
+                    var taskType = p.newTaskType || 'persistent';
+                    return '<div style="max-height:300px;overflow-y:auto;font-size:11px;padding:2px;">'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
                         + '<label>Find ID: <input type="number" data-actparam="targetId" value="' + (p.targetId || 0) + '" min="0" style="width:36px"></label>'
                         + '<button class="auto-pick-btn" onclick="startAutoPick(\'' + makeActionPickSelector(ai, 'targetId') + '\')">Pick</button>'
-                        + '<br>'
+                        + '</div>'
+                        + '<div style="margin-bottom:3px;"><label>Name: <input type="text" data-actparam="newName" value="' + esc(p.newName || '') + '" style="width:160px"></label></div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
                         + '<label>Colour src: <select data-actparam="newColSource" onchange="var n=this.closest(\'.auto-action-body\');n.querySelector(\'.nb-theme-row\').style.display=this.value===\'theme\'?\'\':\'none\';n.querySelector(\'.nb-custom-row\').style.display=this.value===\'custom\'?\'\':\'none\';">'
                         + '<option value="theme"' + (colSource === 'theme' ? ' selected' : '') + '>Theme</option>'
                         + '<option value="custom"' + (colSource === 'custom' ? ' selected' : '') + '>Custom</option>'
                         + '</select></label>'
                         + '<label class="nb-theme-row" style="display:' + (colSource === 'theme' ? '' : 'none') + '">Idx: <select data-actparam="newColThemeIdx">' + themeOpts2 + '</select></label>'
                         + '<label class="nb-custom-row" style="display:' + (colSource === 'custom' ? '' : 'none') + '">Colour: <input type="color" data-actparam="newColour" value="' + esc(custCol) + '"></label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
                         + '<label><input type="checkbox" data-actparam="newSolid" ' + (p.newSolid ? 'checked' : '') + '> Solid</label>'
                         + '<label><input type="checkbox" data-actparam="newOpaque" ' + (p.newOpaque ? 'checked' : '') + '> Opaque</label>'
+                        + '<label><input type="checkbox" data-actparam="newLightPasses" ' + (p.newLightPasses ? 'checked' : '') + '> Light passes</label>'
                         + '<label>Bnc: <input type="number" data-actparam="newBounce" value="' + (p.newBounce || 0) + '" step="0.05" min="0" style="width:36px"></label>'
-                        + '<label><input type="checkbox" data-actparam="newJump" ' + (p.newJump ? 'checked' : '') + '> Jump</label>'
-                        + '<label><input type="checkbox" data-actparam="newFore" ' + (p.newFore ? 'checked' : '') + '> Fore</label>'
-                        + '<label>Name: <input type="text" data-actparam="newName" value="' + esc(p.newName || '') + '" style="width:72px"></label>'
+                        + '<label><input type="checkbox" data-actparam="newJump" ' + (p.newJump ? 'checked' : '') + '> Jump-thru</label>'
+                        + '<label><input type="checkbox" data-actparam="newFore" ' + (p.newFore ? 'checked' : '') + '> Foreground</label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
+                        + '<label>Friction X: <input type="number" data-actparam="newFrictionX" value="' + (p.newFrictionX || 0) + '" step="0.05" style="width:44px"></label>'
+                        + '<label>Y: <input type="number" data-actparam="newFrictionY" value="' + (p.newFrictionY || 0) + '" step="0.05" style="width:44px"></label>'
+                        + '<label>Gravity X: <input type="number" data-actparam="newGravityX" value="' + (p.newGravityX || 0) + '" step="0.05" style="width:44px"></label>'
+                        + '<label>Y: <input type="number" data-actparam="newGravityY" value="' + (p.newGravityY || 0) + '" step="0.05" style="width:44px"></label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
+                        + '<label><input type="checkbox" data-actparam="newIsDeath" ' + (p.newIsDeath ? 'checked' : '') + '> Is Death (kill player, auto non-solid)</label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
+                        + '<label><input type="checkbox" data-actparam="newIsKey" ' + (p.newIsKey ? 'checked' : '') + '> Is Key</label>'
+                        + '<label>Unlocks ID: <input type="number" data-actparam="newUnlocks" value="' + (p.newUnlocks || 0) + '" min="0" style="width:40px"></label>'
+                        + '<label><input type="checkbox" data-actparam="newIsDoor" ' + (p.newIsDoor ? 'checked' : '') + '> Is Door</label>'
+                        + '<label>Locked by: <input type="number" data-actparam="newLockKey" value="' + (p.newLockKey || 0) + '" min="0" style="width:40px"></label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
+                        + '<label><input type="checkbox" data-actparam="newFade" ' + (p.newFade ? 'checked' : '') + '> Fading Platform</label>'
+                        + '<label>Delay: <input type="number" data-actparam="newFadeDelay" value="' + (p.newFadeDelay || 0.5) + '" step="0.1" min="0.1" style="width:40px">s</label>'
+                        + '<label>Fade: <input type="number" data-actparam="newFadeDuration" value="' + (p.newFadeDuration || 0.4) + '" step="0.1" min="0.1" style="width:40px">s</label>'
+                        + '<label>Respawn: <input type="number" data-actparam="newFadeRespawn" value="' + (p.newFadeRespawn || 3) + '" step="0.5" min="0.5" style="width:40px">s</label>'
+                        + '<label><input type="checkbox" data-actparam="newGroupFade" ' + (p.newGroupFade ? 'checked' : '') + '> Group Fade</label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
+                        + '<label><input type="checkbox" data-actparam="newIsTreasureExit" ' + (p.newIsTreasureExit ? 'checked' : '') + '> Is Treasure Exit</label>'
+                        + '<label>Treasure ID: <input type="number" data-actparam="newTreasureTargetId" value="' + (p.newTreasureTargetId || 0) + '" min="0" style="width:40px"></label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
+                        + '<label><input type="checkbox" data-actparam="newIsCheckpoint" ' + (p.newIsCheckpoint ? 'checked' : '') + '> Is Checkpoint</label>'
+                        + '<label><input type="checkbox" data-actparam="newSaveDoorStates" ' + (p.newSaveDoorStates !== false ? 'checked' : '') + '> Save Door States</label>'
+                        + '<label><input type="checkbox" data-actparam="newOneTimeOnly" ' + (p.newOneTimeOnly !== false ? 'checked' : '') + '> One-time</label>'
+                        + '<label><input type="checkbox" data-actparam="newExtraCommand" ' + (p.newExtraCommand ? 'checked' : '') + '> Extra colour</label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
+                        + '<label>Respawn msg: <input type="text" data-actparam="newRespawnMsg" value="' + esc(p.newRespawnMsg || '') + '" style="width:140px"></label>'
+                        + '<label>Target ID: <input type="number" data-actparam="newExtraTargetId" value="' + (p.newExtraTargetId || 0) + '" min="0" style="width:40px"></label>'
+                        + '<label>Colour: <input type="color" data-actparam="newExtraTargetColour" value="' + esc(p.newExtraTargetColour || '#FF9900') + '"><button class="theme-pick-btn" onclick="showThemePicker(this.parentNode.querySelector(\'input[type=color]\'))" title="Pick from theme">T</button></label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:3px;">'
+                        + '<label><input type="checkbox" data-actparam="newIsTask" ' + (p.newIsTask ? 'checked' : '') + '> Has Task</label>'
+                        + '<label>ID: <input type="number" data-actparam="newTaskId" value="' + (p.newTaskId || 1) + '" min="0" style="width:36px"></label>'
+                        + '<label>Type: <select data-actparam="newTaskType">'
+                        + '<option value="persistent"' + (taskType === 'persistent' ? ' selected' : '') + '>Persistent</option>'
+                        + '<option value="timeout"' + (taskType === 'timeout' ? ' selected' : '') + '>Timed</option>'
+                        + '</select></label>'
+                        + '<label>Msg: <input type="text" data-actparam="newTaskMsg" value="' + esc(p.newTaskMsg || '') + '" style="width:120px"></label>'
+                        + '<label>Dur: <input type="number" data-actparam="newTaskDuration" value="' + (p.newTaskDuration || 5) + '" min="1" style="width:36px">s</label>'
+                        + '<label><input type="checkbox" data-actparam="newTaskOnce" ' + (p.newTaskOnce !== false ? 'checked' : '') + '> One-time</label>'
+                        + '</div>'
+                        + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">'
+                        + '<label>Completes Task ID: <input type="number" data-actparam="newCompletesTaskId" value="' + (p.newCompletesTaskId || 0) + '" min="0" style="width:40px"></label>'
+                        + '</div>'
                         + '</div>';
                 default:
                     return '';
