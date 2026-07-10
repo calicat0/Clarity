@@ -616,6 +616,9 @@ Clarity.prototype.move_player = function () {
     
     if(this.last_tile != tile.id) {
         var autoHandled = this.checkAutomations({ type: 'tile_step', tileId: tile.id });
+        if (autoHandled && tile.isCheckpoint) {
+            this.activateCheckpoint(tile.id);
+        }
         if (!autoHandled && tile.script) {
             if (tile.script === "death") {
                 this.handleDeath();
@@ -1175,6 +1178,7 @@ Clarity.prototype.getLevelState = function () {
         playerY: this.player.loc.y,
         playerColour: this.player.colour,
         doorStates: this.getDoorStates(),
+        keyStates: this.getKeyStates(),
         checkpoint: this.checkpoint ? JSON.parse(JSON.stringify(this.checkpoint)) : null,
         oneTimeTriggered: this.oneTimeTriggered ? JSON.parse(JSON.stringify(this.oneTimeTriggered)) : {},
         tasks: Object.keys(this.tasks).map(function (id) {
@@ -1195,6 +1199,16 @@ Clarity.prototype.setLevelState = function (state) {
             if (door) {
                 door.solid = ds.solid;
                 door.colour = ds.colour;
+            }
+        }, this);
+    }
+    if (state.keyStates) {
+        state.keyStates.forEach(function (ks) {
+            var key = this.current_map.keys.find(function (k) { return k.id === ks.id; });
+            if (key) {
+                for (var prop in ks) {
+                    key[prop] = ks[prop];
+                }
             }
         }, this);
     }
@@ -1233,6 +1247,14 @@ Clarity.prototype.getDoorStates = function () {
     return states;
 };
 
+Clarity.prototype.getKeyStates = function () {
+    var states = [];
+    this.current_map.keys.forEach(function (k) {
+        states.push(JSON.parse(JSON.stringify(k)));
+    });
+    return states;
+};
+
 Clarity.prototype.activateCheckpoint = function (tileId) {
     var cpTile = this.current_map.keys.find(function (k) { return k.id === tileId; });
     if (!cpTile) return;
@@ -1248,7 +1270,8 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
         playerX: this.player.loc.x,
         playerY: this.player.loc.y,
         playerColour: this.player.colour,
-        doorStates: cpTile.saveDoorStates !== false ? this.getDoorStates() : []
+        doorStates: cpTile.saveDoorStates !== false ? this.getDoorStates() : [],
+        keyStates: this.getKeyStates()
     };
 
     if (cpTile.respawnMessage && !isSameCheckpoint) {
@@ -1355,6 +1378,16 @@ Clarity.prototype.handleDeath = function () {
                 door.colour = state.colour;
             }
         }, this);
+        if (cp.keyStates) {
+            cp.keyStates.forEach(function (ks) {
+                var key = this.current_map.keys.find(function (k) { return k.id === ks.id; });
+                if (key) {
+                    for (var prop in ks) {
+                        key[prop] = ks[prop];
+                    }
+                }
+            }, this);
+        }
     } else {
         this.oneTimeTriggered = {};
         if (this.modularData) {
