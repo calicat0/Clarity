@@ -1271,7 +1271,8 @@ Clarity.prototype.activateCheckpoint = function (tileId) {
         playerY: this.player.loc.y,
         playerColour: this.player.colour,
         doorStates: cpTile.saveDoorStates !== false ? this.getDoorStates() : [],
-        keyStates: this.getKeyStates()
+        keyStates: this.getKeyStates(),
+        oneTimeTriggered: JSON.parse(JSON.stringify(this.oneTimeTriggered || {}))
     };
 
     if (cpTile.respawnMessage && !isSameCheckpoint) {
@@ -1361,7 +1362,6 @@ Clarity.prototype.handleDeath = function () {
     this.key.up = false;
     this.showMessage("You died!");
     if (this.checkpoint) {
-        // Keep oneTimeTriggered — triggers already passed are done
         var cp = this.checkpoint;
         if (this.modularData) {
             this.loadModularMap(this.modularIndex);
@@ -1387,6 +1387,9 @@ Clarity.prototype.handleDeath = function () {
                     }
                 }
             }, this);
+        }
+        if (cp.oneTimeTriggered) {
+            this.oneTimeTriggered = JSON.parse(JSON.stringify(cp.oneTimeTriggered));
         }
     } else {
         this.oneTimeTriggered = {};
