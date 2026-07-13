@@ -5019,6 +5019,7 @@
             canvas.style.height = ptVH + 'px';
 
             document.getElementById('playtest-overlay').classList.add('open');
+            playtestFitZoom();
 
             var ptAccumulator = 0;
             var ptFixedStep = 1000 / 60;
@@ -5103,6 +5104,23 @@
             document.getElementById('pt-zoom-label').textContent = pct + '%';
             document.getElementById('playtest-canvas').style.transform = 'scale(' + (pct / 100) + ')';
         }
+
+        function playtestFitZoom() {
+            var gameArea = document.getElementById('playtest-game-area');
+            if (!gameArea) return;
+            var padding = 12;
+            var availW = gameArea.clientWidth - padding * 2;
+            var availH = gameArea.clientHeight - padding * 2;
+            var scale = Math.min(availW / ptVW, availH / ptVH);
+            var maxZoom = 3;
+            var percent = Math.round(Math.min(Math.max(scale, 0.25), maxZoom) * 100);
+            document.getElementById('pt-zoom').value = percent;
+            playtestSetZoom(percent);
+        }
+
+        window.addEventListener('resize', function() {
+            if (playtestActive) playtestFitZoom();
+        });
 
         function playtestSetLock(checked) {
             if (playtestGame) playtestGame.limit_viewport = checked;
