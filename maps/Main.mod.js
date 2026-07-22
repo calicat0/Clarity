@@ -113,10 +113,10 @@ loadModularData({
   portal_18: "this.goToLevelPortal(\"portal_main_18\");",
   portal_19: "this.goToLevelPortal(\"portal_main_19\");"
 }, automations: [
-  {id: 1, name: "New Automation", enabled: true, once: true, trigger: {
+  {id: 1, name: "Check Tutorial Completion Status", enabled: true, once: true, trigger: {
   type: "level_completed",
   params: {
-    targetWorld: "Cave 1"
+    targetWorld: "Tutorial"
   }
 }, actions: [
   {type: "set_colour", params: {
