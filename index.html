@@ -1414,19 +1414,26 @@
 
                 var firstUnfinished = -1;
                 data.maps.forEach(function(m, i) {
-                    if (m.type !== 'treasure' && !worldComps[String(i)]) {
+                    var discovered = isLevelDiscovered(portal.portalTargetWorld, i);
+                    var cpEnabled = !!m.checkpoint;
+                    var canWarp = discovered || cpEnabled;
+                    if (canWarp && m.type !== 'treasure' && !worldComps[String(i)]) {
                         if (firstUnfinished === -1) firstUnfinished = i;
                     }
                 });
                 selectedIndex = firstUnfinished >= 0 ? firstUnfinished : 0;
 
                 data.maps.forEach(function(m, i) {
-                    var row = document.createElement('div');
-                    row.style.cssText = 'padding:3px 6px;cursor:pointer;border-radius:3px;margin:1px 0;';
-                    row.style.background = i === selectedIndex ? '#2a4a5a' : 'transparent';
-
+                    var discovered = isLevelDiscovered(portal.portalTargetWorld, i);
+                    var cpEnabled = !!m.checkpoint;
+                    var canWarp = discovered || cpEnabled;
                     var isTreasure = m.type === 'treasure';
                     var isCompleted = !!worldComps[String(i)];
+
+                    var row = document.createElement('div');
+                    row.style.cssText = 'padding:3px 6px;border-radius:3px;margin:1px 0;';
+                    row.style.cursor = canWarp ? 'pointer' : 'default';
+                    row.style.background = canWarp && i === selectedIndex ? '#2a4a5a' : 'transparent';
 
                     var cb = document.createElement('span');
                     cb.textContent = isCompleted ? '✓' : '○';
@@ -1435,26 +1442,44 @@
                     row.appendChild(cb);
 
                     var nameSpan = document.createElement('span');
-                    nameSpan.textContent = isTreasure ? (m.treasureId || 'Treasure') : (m.name || 'Level ' + (i + 1));
-                    nameSpan.style.color = isTreasure ? '#ffd700' : '#ccc';
+                    if (isTreasure) {
+                        if (canWarp) {
+                            nameSpan.textContent = m.treasureId || 'Treasure';
+                            nameSpan.style.color = '#ffd700';
+                        } else {
+                            nameSpan.textContent = '???';
+                            nameSpan.style.color = '#555';
+                        }
+                    } else if (canWarp) {
+                        nameSpan.textContent = m.name || 'Level ' + (i + 1);
+                        nameSpan.style.color = '#ccc';
+                    } else {
+                        nameSpan.textContent = '???';
+                        nameSpan.style.color = '#555';
+                    }
                     row.appendChild(nameSpan);
 
-                    if (isCompleted) {
+                    if (canWarp && isCompleted) {
                         var doneLabel = document.createElement('span');
                         doneLabel.textContent = ' ✓';
                         doneLabel.style.color = '#4CAF50';
                         row.appendChild(doneLabel);
                     }
 
-                    row.onclick = function() {
-                        dismissPrompt();
-                        clearTimeout(dismissTimer);
-                        game.onPortalPromptDismiss = null;
-                        overlay.remove();
-                        game.cancelPortalPrompt();
-                        game._portalSelectedIndex = i;
-                        onGo();
-                    };
+                    if (canWarp) {
+                        row.title = (isTreasure ? 'Treasure: ' : 'Level: ') + (m.name || 'Level ' + (i + 1));
+                        row.onclick = function() {
+                            dismissPrompt();
+                            clearTimeout(dismissTimer);
+                            game.onPortalPromptDismiss = null;
+                            overlay.remove();
+                            game.cancelPortalPrompt();
+                            game._portalSelectedIndex = i;
+                            onGo();
+                        };
+                    } else {
+                        row.title = isTreasure ? 'Treasure (undiscovered)' : 'Level ' + (i + 1) + ' (undiscovered)';
+                    }
 
                     levelListEl.appendChild(row);
                 });
