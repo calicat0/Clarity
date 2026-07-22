@@ -812,6 +812,7 @@
             <div class="side-section">
                 <div class="section-header">Level Info</div>
                 <div id="level-list"></div>
+                <button id="return-home-btn" onclick="returnToHub()" style="display:none;width:100%;margin-bottom:4px;padding:4px 8px;background:#2a4a5a;border-color:#3a6a8a;color:#7ab;cursor:pointer;">↩ Return to Home Map</button>
                 <div class="info-row"><span class="label">Progress</span><span class="value highlight" id="info-progress">—</span></div>
             </div>
             <div class="side-section" data-dev="performance">
@@ -1058,6 +1059,7 @@
                 }
             }
             updatePortalBlockVisuals();
+            updateReturnHomeBtn();
             applyLockViewport();
             applyCameraMode();
             return ret;
@@ -1562,6 +1564,49 @@
             document.addEventListener('keydown', keyHandler);
         }
 
+        function updateReturnHomeBtn() {
+            var btn = document.getElementById('return-home-btn');
+            if (btn) btn.style.display = game.portalReturnWorld ? '' : 'none';
+        }
+
+        function returnToHub() {
+            if (!game.portalReturnWorld) return;
+
+            var overlay = document.createElement('div');
+            overlay.className = 'confirm-overlay';
+            overlay.innerHTML =
+                '<div class="confirm-box" style="border-color:#3a6a8a;">' +
+                '<p style="font-size:14px;color:#7ab;margin-bottom:8px;">Leave level?</p>' +
+                '<p style="font-size:12px;color:#aaa;margin:0 0 16px 0;">Your progress was saved at your last checkpoint.<br>You can resume from there.</p>' +
+                '<div class="confirm-actions">' +
+                '<button class="confirm-danger" style="background:#2a4a5a;border-color:#3a6a8a;color:#7ab;">Yes</button>' +
+                '<button class="confirm-cancel">No</button>' +
+                '</div></div>';
+
+            var dismissTimer = setTimeout(function() {
+                overlay.remove();
+            }, 5000);
+
+            overlay.querySelector('.confirm-danger').onclick = function() {
+                clearTimeout(dismissTimer);
+                overlay.remove();
+                _pendingPortalReturn = {
+                    returnWorld: game.portalReturnWorld,
+                    returnIndex: game.portalReturnIndex,
+                    returnState: game.portalReturnState
+                };
+                game.portalReturnWorld = null;
+                game.portalReturnIndex = null;
+                game.portalReturnState = null;
+                loadMap('maps/' + _pendingPortalReturn.returnWorld + '.mod.js');
+            };
+            overlay.querySelector('.confirm-cancel').onclick = function() {
+                clearTimeout(dismissTimer);
+                overlay.remove();
+            };
+            document.body.appendChild(overlay);
+        }
+
         function isWorldFullyCompleted(worldName) {
             if (!worldName) return false;
             // Check via modular data: if the world was ever loaded, we know its level count
@@ -1724,6 +1769,7 @@
                 game.portalReturnWorld = null;
                 game.portalReturnIndex = null;
                 game.portalReturnState = null;
+                updateReturnHomeBtn();
                 loadMap(sel.value);
             }
         }
@@ -1810,6 +1856,7 @@
         if (isMobile) {
             document.addEventListener('touchstart', function (e) {
                 if (!zenMode) return;
+                if (e.target.closest('.confirm-overlay')) return;
                 e.preventDefault();
                 for (var i = 0; i < e.changedTouches.length; i++) {
                     var t = e.changedTouches[i];
@@ -1882,6 +1929,13 @@
                 }
             }, { passive: false });
         }
+
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.matches && e.target.matches('.confirm-overlay')) {
+                var cancelBtn = e.target.querySelector('.confirm-cancel');
+                if (cancelBtn) cancelBtn.click();
+            }
+        });
 
         /* ---- Zoom ---- */
 
