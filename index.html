@@ -1856,26 +1856,28 @@
         if (isMobile) {
             document.addEventListener('touchstart', function (e) {
                 if (!zenMode) return;
-                if (e.target.closest('.confirm-overlay')) return;
-                e.preventDefault();
+                var onOverlay = e.target.closest('.confirm-overlay');
+                if (!onOverlay) e.preventDefault();
                 for (var i = 0; i < e.changedTouches.length; i++) {
                     var t = e.changedTouches[i];
                     var zone = getTouchZone(t.clientX, t.clientY);
-                    if (zone) {
+                    if (zone && !onOverlay) {
                         activeTouches[t.identifier] = zone;
                         game.key[zoneKeyMap[zone]] = true;
                         touchZoneUpdate(document.getElementById('touch-' + zone), true);
+                    } else if (onOverlay) {
+                        activeTouches[t.identifier] = '__overlay__';
                     }
                 }
             }, { passive: false });
 
             document.addEventListener('touchend', function (e) {
                 if (!zenMode) return;
-                e.preventDefault();
+                if (!e.target.closest('.confirm-overlay')) e.preventDefault();
                 for (var i = 0; i < e.changedTouches.length; i++) {
                     var t = e.changedTouches[i];
                     var zone = activeTouches[t.identifier];
-                    if (zone) {
+                    if (zone && zone !== '__overlay__') {
                         delete activeTouches[t.identifier];
                         var stillActive = false;
                         for (var id in activeTouches) {
@@ -1885,6 +1887,8 @@
                             game.key[zoneKeyMap[zone]] = false;
                             touchZoneUpdate(document.getElementById('touch-' + zone), false);
                         }
+                    } else if (zone === '__overlay__') {
+                        delete activeTouches[t.identifier];
                     }
                 }
             }, { passive: false });
@@ -1894,20 +1898,23 @@
                 for (var i = 0; i < e.changedTouches.length; i++) {
                     var t = e.changedTouches[i];
                     var zone = activeTouches[t.identifier];
-                    if (zone) {
+                    if (zone && zone !== '__overlay__') {
                         delete activeTouches[t.identifier];
                         game.key[zoneKeyMap[zone]] = false;
                         touchZoneUpdate(document.getElementById('touch-' + zone), false);
+                    } else if (zone === '__overlay__') {
+                        delete activeTouches[t.identifier];
                     }
                 }
             }, { passive: false });
 
             document.addEventListener('touchmove', function (e) {
                 if (!zenMode) return;
-                e.preventDefault();
+                if (!e.target.closest('.confirm-overlay')) e.preventDefault();
                 for (var i = 0; i < e.changedTouches.length; i++) {
                     var t = e.changedTouches[i];
                     var oldZone = activeTouches[t.identifier];
+                    if (oldZone === '__overlay__') continue;
                     var newZone = getTouchZone(t.clientX, t.clientY);
                     if (oldZone !== newZone) {
                         if (oldZone) {
