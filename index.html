@@ -936,10 +936,51 @@
 
         var game = new Clarity();
         game.set_viewport(VP_W, VP_H);
+
+        game.onCheckWorldCompleted = function(worldName) {
+            return isWorldFullyCompleted(worldName);
+        };
+
+        game.onPromptLevelPortalReentry = function(portal, confirmFn) {
+            showLevelPortalPrompt(portal, confirmFn);
+        };
+
+        game.onBeforePortalExit = function(levelIndex, state) {
+            if (game.modularData) {
+                saveLevelState(game.modularData.name, levelIndex, state);
+            }
+        };
+
+        game.onLoadExternalPortal = function(portal, targetIndex) {
+            var file = portal.portalTargetFile;
+            if (file) {
+                _portalTargetIndex = targetIndex >= 0 ? targetIndex : 0;
+                loadMap('maps/' + file);
+            }
+        };
+
+        var _pendingPortalReturn = null;
+        var _worldDataCache = {};
+        var _portalTargetIndex = -1;
+
         game.onLevelCompleted = function(levelIndex) {
             if (game.modularData) {
                 saveCompletion(game.modularData.name, levelIndex);
                 updateLevelInfoPanel();
+            }
+        };
+
+        game.onAllLevelsCompleted = function(worldName) {
+            if (game.portalReturnWorld && isWorldFullyCompleted(worldName)) {
+                _pendingPortalReturn = {
+                    returnWorld: game.portalReturnWorld,
+                    returnIndex: game.portalReturnIndex,
+                    returnState: game.portalReturnState
+                };
+                game.portalReturnWorld = null;
+                game.portalReturnIndex = null;
+                game.portalReturnState = null;
+                loadMap('maps/' + _pendingPortalReturn.returnWorld + '.mod.js');
             }
         };
 
@@ -984,6 +1025,7 @@
             updateLevelInfo();
             updateSidePanel();
             updateLevelInfoPanel();
+            updatePortalBlockVisuals();
             applyLockViewport();
             applyCameraMode();
             return ret;
@@ -998,9 +1040,24 @@
                     saveLastPlayed(game.modularData.name, index);
                 }
                 saveCheckpoint(game.modularData.name, index);
+                // Save level count for completion checking
+                var nonTreasureCount = 0;
+                game.modularData.maps.forEach(function (m) {
+                    if (m.type !== 'treasure') nonTreasureCount++;
+                });
+                saveLevelCount(game.modularData.name, nonTreasureCount);
                 updateLevelInfoPanel();
                 updateContinueButton();
+                // Handle pending portal return (return to hub after completing external world)
+                if (_pendingPortalReturn && game.modularData.name === _pendingPortalReturn.returnWorld) {
+                    var pr = _pendingPortalReturn;
+                    _pendingPortalReturn = null;
+                    if (pr.returnState) {
+                        game.setLevelState(pr.returnState);
+                    }
+                }
             }
+            updatePortalBlockVisuals();
             applyLockViewport();
             applyCameraMode();
             return ret;
@@ -1047,12 +1104,15 @@
         }
         
         function loadModularData(data) {
+            _worldDataCache[data.name] = data;
             game.modularData = JSON.parse(JSON.stringify(data));
             game.modularIndex = 0;
             game.checkpoint = null;
             game.oneTimeTriggered = {};
             game._savedLevelState = null;
-            game.loadModularMap(0);
+            var targetIndex = _portalTargetIndex >= 0 ? _portalTargetIndex : 0;
+            _portalTargetIndex = -1;
+            game.loadModularMap(targetIndex);
             updateLevelInfoPanel();
             updateContinueButton();
         }
@@ -1294,6 +1354,241 @@
             document.body.appendChild(overlay);
         }
 
+        /* ---- Level Portal System ---- */
+
+        function fetchWorldData(file, callback) {
+            var oldHandler = window.loadModularData;
+            var timer = setTimeout(function() {
+                window.loadModularData = oldHandler;
+                callback(null);
+            }, 5000);
+            window.loadModularData = function(data) {
+                clearTimeout(timer);
+                window.loadModularData = oldHandler;
+                var tmp = document.getElementById('tmp-world-loader');
+                if (tmp) tmp.remove();
+                callback(data);
+            };
+            var script = document.createElement('script');
+            script.src = 'maps/' + file;
+            script.id = 'tmp-world-loader';
+            script.onerror = function() {
+                clearTimeout(timer);
+                window.loadModularData = oldHandler;
+                callback(null);
+                this.remove();
+            };
+            document.head.appendChild(script);
+        }
+
+        function showLevelPortalPrompt(portal, onGo) {
+            var worldName = portal.portalLevelName || portal.portalTargetWorld || 'Unknown';
+            var completed = isWorldFullyCompleted(portal.portalTargetWorld);
+            var selectedIndex = -1;
+
+            var overlay = document.createElement('div');
+            overlay.className = 'confirm-overlay';
+            overlay.innerHTML =
+                '<div class="confirm-box" style="border-color:#3a6a8a;width:360px;">' +
+                '<p style="font-size:14px;color:#7ab;margin-bottom:4px;">' + worldName + '</p>' +
+                '<div id="portal-level-list" style="max-height:200px;overflow-y:auto;margin:8px 0;font-size:12px;"></div>' +
+                '<div class="confirm-actions">' +
+                '<button class="confirm-danger" style="background:#2a4a5a;border-color:#3a6a8a;color:#7ab;">Play</button>' +
+                '<button class="confirm-cancel">Cancel</button>' +
+                '</div></div>';
+
+            var levelListEl = overlay.querySelector('#portal-level-list');
+            var playBtn = overlay.querySelector('.confirm-danger');
+            var dismissed = false;
+
+            function populateLevels(data) {
+                levelListEl.innerHTML = '';
+                if (!data || !data.maps) {
+                    levelListEl.innerHTML = '<div style="color:#666;padding:4px;">' +
+                        (completed ? '✓ Completed' : 'Not yet completed') + '</div>';
+                    return;
+                }
+
+                var comps = loadCompletions();
+                var worldComps = comps[portal.portalTargetWorld] || {};
+
+                var firstUnfinished = -1;
+                data.maps.forEach(function(m, i) {
+                    if (m.type !== 'treasure' && !worldComps[String(i)]) {
+                        if (firstUnfinished === -1) firstUnfinished = i;
+                    }
+                });
+                selectedIndex = firstUnfinished >= 0 ? firstUnfinished : 0;
+
+                data.maps.forEach(function(m, i) {
+                    var row = document.createElement('div');
+                    row.style.cssText = 'padding:3px 6px;cursor:pointer;border-radius:3px;margin:1px 0;';
+                    row.style.background = i === selectedIndex ? '#2a4a5a' : 'transparent';
+
+                    var isTreasure = m.type === 'treasure';
+                    var isCompleted = !!worldComps[String(i)];
+
+                    var cb = document.createElement('span');
+                    cb.textContent = isCompleted ? '✓' : '○';
+                    cb.style.color = isCompleted ? '#4CAF50' : (isTreasure ? '#ffd700' : '#888');
+                    cb.style.marginRight = '6px';
+                    row.appendChild(cb);
+
+                    var nameSpan = document.createElement('span');
+                    nameSpan.textContent = isTreasure ? (m.treasureId || 'Treasure') : (m.name || 'Level ' + (i + 1));
+                    nameSpan.style.color = isTreasure ? '#ffd700' : '#ccc';
+                    row.appendChild(nameSpan);
+
+                    if (isCompleted) {
+                        var doneLabel = document.createElement('span');
+                        doneLabel.textContent = ' ✓';
+                        doneLabel.style.color = '#4CAF50';
+                        row.appendChild(doneLabel);
+                    }
+
+                    row.onclick = function() {
+                        dismissPrompt();
+                        clearTimeout(dismissTimer);
+                        game.onPortalPromptDismiss = null;
+                        overlay.remove();
+                        game.cancelPortalPrompt();
+                        game._portalSelectedIndex = i;
+                        onGo();
+                    };
+
+                    levelListEl.appendChild(row);
+                });
+            }
+
+            var data = _worldDataCache[portal.portalTargetWorld];
+            if (data) {
+                populateLevels(data);
+            } else if (portal.portalTargetFile) {
+                playBtn.disabled = true;
+                playBtn.style.opacity = '0.5';
+                playBtn.style.cursor = 'default';
+                levelListEl.innerHTML = '<span style="color:#666;">Loading...</span>';
+                fetchWorldData(portal.portalTargetFile, function(fetched) {
+                    if (dismissed) return;
+                    playBtn.disabled = false;
+                    playBtn.style.opacity = '';
+                    playBtn.style.cursor = '';
+                    if (fetched) {
+                        _worldDataCache[fetched.name] = fetched;
+                        levelListEl.innerHTML = '';
+                        populateLevels(fetched);
+                    } else {
+                        levelListEl.innerHTML = '<div style="color:#666;padding:4px;">' +
+                            (completed ? '✓ Completed' : 'Not yet completed') + '</div>';
+                    }
+                });
+            } else {
+                levelListEl.innerHTML = '<div style="color:#666;padding:4px;">' +
+                    (completed ? '✓ Completed' : 'Not yet completed') + '</div>';
+            }
+
+            function dismissPrompt() {
+                dismissed = true;
+                document.removeEventListener('keydown', keyHandler);
+            }
+
+            var dismissTimer = setTimeout(function() {
+                dismissPrompt();
+                overlay.remove();
+                game.cancelPortalPrompt();
+            }, 15000);
+
+            game.onPortalPromptDismiss = function() {
+                dismissPrompt();
+                clearTimeout(dismissTimer);
+                game.onPortalPromptDismiss = null;
+                overlay.remove();
+            };
+
+            overlay.querySelector('.confirm-danger').onclick = function() {
+                dismissPrompt();
+                clearTimeout(dismissTimer);
+                game.onPortalPromptDismiss = null;
+                overlay.remove();
+                game.cancelPortalPrompt();
+                game._portalSelectedIndex = selectedIndex;
+                onGo();
+            };
+            overlay.querySelector('.confirm-cancel').onclick = function() {
+                dismissPrompt();
+                clearTimeout(dismissTimer);
+                game.onPortalPromptDismiss = null;
+                overlay.remove();
+                game.cancelPortalPrompt();
+            };
+            document.body.appendChild(overlay);
+
+            function keyHandler(e) {
+                if (e.key === 'p' || e.key === 'P') {
+                    dismissPrompt();
+                    clearTimeout(dismissTimer);
+                    game.onPortalPromptDismiss = null;
+                    overlay.remove();
+                    game.cancelPortalPrompt();
+                    game._portalSelectedIndex = selectedIndex;
+                    onGo();
+                }
+            }
+            document.addEventListener('keydown', keyHandler);
+        }
+
+        function isWorldFullyCompleted(worldName) {
+            if (!worldName) return false;
+            // Check via modular data: if the world was ever loaded, we know its level count
+            // Otherwise iterate over all completions for that world name
+            var comps = loadCompletions();
+            var worldComps = comps[worldName];
+            if (!worldComps) return false;
+            // We need to know how many non-treasure levels this world has.
+            // Check if we have stored the level count for this world
+            var levelCounts = loadLevelCounts();
+            var count = levelCounts[worldName];
+            if (!count) return false;
+            var completedCount = 0;
+            for (var i = 0; i < count; i++) {
+                if (worldComps[String(i)]) completedCount++;
+            }
+            return completedCount >= count;
+        }
+
+        function saveLevelCount(worldName, count) {
+            var counts = loadLevelCounts();
+            counts[worldName] = count;
+            try { localStorage.setItem('clarity-level-counts', JSON.stringify(counts)); } catch (e) {}
+        }
+
+        function loadLevelCounts() {
+            try {
+                var raw = localStorage.getItem('clarity-level-counts');
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) { return {}; }
+        }
+
+        function updatePortalBlockVisuals() {
+            if (!game.current_map || !game.current_map.keys) return;
+            var changed = false;
+            game.current_map.keys.forEach(function (k) {
+                if (k.isLevelPortal) {
+                    var completed = isWorldFullyCompleted(k.portalTargetWorld);
+                    var completedColour = '#4CAF50';
+                    if (completed && k.colour !== completedColour) {
+                        k.colour = completedColour;
+                        changed = true;
+                    } else if (!completed) {
+                        // Restore original colour from source data if needed
+                        // (handled by reloading the map fresh each time)
+                    }
+                }
+            });
+        }
+
+        /* ---- End Level Portal System ---- */
+
         function showConfirmDialog(message, onConfirm, confirmLabel) {
             if (confirmLabel === undefined) confirmLabel = 'Confirm';
             var overlay = document.createElement('div');
@@ -1394,15 +1689,18 @@
                 opt.textContent = m.name;
                 sel.appendChild(opt);
             });
-            if (list.length > 0) {
-                var first = list[0].file;
-                loadMap(first.indexOf('://') !== -1 || first.indexOf('//') === 0 ? first : 'maps/' + first);
-            }
+            // Always load Main.mod.js by default (the hub world)
+            loadMap('maps/Main.mod.js');
         }
 
         function loadSelected() {
             var sel = document.getElementById('map-select');
-            if (sel.value) loadMap(sel.value);
+            if (sel.value) {
+                game.portalReturnWorld = null;
+                game.portalReturnIndex = null;
+                game.portalReturnState = null;
+                loadMap(sel.value);
+            }
         }
 
         function loadFile() {

@@ -1525,6 +1525,7 @@
                         <button class="qa-key" onclick="showQuickAddKeyForm()">KEY Key</button>
                         <button class="qa-info" onclick="showQuickAddInfoForm()">(i) Info</button>
                         <button onclick="showQuickAddTreasureForm()" style="background:#887700;border-color:#aa8800;color:#fff;">Treasure Exit</button>
+                        <button onclick="showQuickAddLevelPortalForm()" style="background:#2a4a5a;border-color:#3a6a8a;color:#7ab;">Level Portal</button>
                         <button class="qa-trigger" onclick="quickAddTrigger()">Trigger</button>
                         <button class="qa-block-maker" onclick="showBlockMaker()">[+] Block Maker</button>
                     </div>
@@ -1558,6 +1559,47 @@
                     </div>
                     <div style="margin-top:8px;display:flex;gap:6px;">
                         <button onclick="confirmQuickAddTreasure()">+ Add Treasure Exit</button>
+                        <button onclick="showQuickAddDialog()">← Back</button>
+                    </div>
+                </div>
+                <div id="qa-level-portal-form" style="display:none">
+                    <p style="font-size:12px;color:#888;margin:0 0 8px 0;">Creates a level portal block. Player steps on it to warp to a level.</p>
+                    <div class="qa-form-row">
+                        <label>Name: <input type="text" id="qa-portal-name" placeholder="e.g. World 1 Portal"></label>
+                        <label>Colour: <input type="color" id="qa-portal-colour" value="#3a6a8a"></label>
+                    </div>
+                    <div class="qa-form-row">
+                        <label>Portal ID: <input type="text" id="qa-portal-id" placeholder="e.g. portal_world1" style="width:160px"></label>
+                        <label>Level Name: <input type="text" id="qa-portal-level-name" placeholder="e.g. World 1" style="width:140px"></label>
+                    </div>
+                    <div class="qa-form-row">
+                        <label>Target Type:
+                            <select id="qa-portal-type" onchange="togglePortalTargetFields()">
+                                <option value="external">External Map</option>
+                                <option value="internal">Internal Level</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="qa-portal-external-row" class="qa-form-row">
+                        <label>Target File:
+                            <select id="qa-portal-file" style="width:200px">
+                                <option value="World_1.mod.js">World_1.mod.js</option>
+                                <option value="World_2.mod.js">World_2.mod.js</option>
+                                <option value="Tutorial.mod.js">Tutorial.mod.js</option>
+                                <option value="Tutorial_-_Advanced_1.mod.js">Tutorial_-_Advanced_1.mod.js</option>
+                                <option value="Trials-1.mod.js">Trials-1.mod.js</option>
+                                <option value="Trials-2.mod.js">Trials-2.mod.js</option>
+                                <option value="Cave_1.mod.js">Cave_1.mod.js</option>
+                                <option value="Desert.mod.js">Desert.mod.js</option>
+                                <option value="Challenge_1_-_Gauntlet.mod.js">Challenge_1_-_Gauntlet.mod.js</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="qa-portal-internal-row" class="qa-form-row" style="display:none">
+                        <label>Internal Level Index: <input type="number" id="qa-portal-index" value="0" min="0" style="width:60px"></label>
+                    </div>
+                    <div style="margin-top:8px;display:flex;gap:6px;">
+                        <button onclick="confirmQuickAddLevelPortal()">+ Add Level Portal</button>
                         <button onclick="showQuickAddDialog()">← Back</button>
                     </div>
                 </div>
@@ -1647,6 +1689,39 @@
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-is-treasure-exit" onchange="toggleTreasureExitFields()"> Is Treasure Exit</label>
                     <label>Unlocks Treasure ID: <input type="number" id="custom-treasure-id" value="0" min="0" style="width:52px"></label>
+                </div>
+                <div class="prop-row">
+                    <label><input type="checkbox" id="custom-is-level-portal" onchange="toggleLevelPortalFields()"> Is Level Portal</label>
+                </div>
+                <div class="prop-row" id="portal-id-row" style="display:none">
+                    <label>Portal ID: <input type="text" id="custom-portal-id" placeholder="e.g. portal_world1" style="width:160px"></label>
+                    <label>Level Name: <input type="text" id="custom-portal-level-name" placeholder="e.g. World 1" style="width:140px"></label>
+                </div>
+                <div class="prop-row" id="portal-type-row" style="display:none">
+                    <label>Target Type:
+                        <select id="custom-portal-type" onchange="toggleCustomPortalFields()">
+                            <option value="external">External Map</option>
+                            <option value="internal">Internal Level</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="prop-row" id="portal-external-row" style="display:none">
+                    <label>Target File:
+                        <select id="custom-portal-file" style="width:200px">
+                            <option value="World_1.mod.js">World_1.mod.js</option>
+                            <option value="World_2.mod.js">World_2.mod.js</option>
+                            <option value="Tutorial.mod.js">Tutorial.mod.js</option>
+                            <option value="Tutorial_-_Advanced_1.mod.js">Tutorial_-_Advanced_1.mod.js</option>
+                            <option value="Trials-1.mod.js">Trials-1.mod.js</option>
+                            <option value="Trials-2.mod.js">Trials-2.mod.js</option>
+                            <option value="Cave_1.mod.js">Cave_1.mod.js</option>
+                            <option value="Desert.mod.js">Desert.mod.js</option>
+                            <option value="Challenge_1_-_Gauntlet.mod.js">Challenge_1_-_Gauntlet.mod.js</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="prop-row" id="portal-internal-row" style="display:none">
+                    <label>Internal Level Index: <input type="number" id="custom-portal-index" value="0" min="0" style="width:60px"></label>
                 </div>
                 <div class="prop-row">
                     <label><input type="checkbox" id="custom-is-checkpoint" onchange="toggleCpFields()"> Is Checkpoint</label>
@@ -1778,6 +1853,7 @@
                         <option value="timer">Timer (after map load)</option>
                         <option value="checkpoint">Checkpoint activated</option>
                         <option value="task_completed">Task completed</option>
+                        <option value="level_completed">Level completed (on map load)</option>
                     </select>
                 </label>
             </div>
@@ -1951,6 +2027,13 @@
             document.getElementById('custom-is-death').checked = false;
             document.getElementById('custom-is-treasure-exit').checked = false;
             document.getElementById('custom-treasure-id').value = '0';
+            document.getElementById('custom-is-level-portal').checked = false;
+            document.getElementById('custom-portal-id').value = '';
+            document.getElementById('custom-portal-level-name').value = '';
+            document.getElementById('custom-portal-type').value = 'external';
+            document.getElementById('custom-portal-file').value = 'World_1.mod.js';
+            document.getElementById('custom-portal-index').value = '0';
+            toggleLevelPortalFields();
             document.getElementById('custom-is-checkpoint').checked = false;
             document.getElementById('custom-save-door-states').checked = true;
             document.getElementById('custom-respawn-enabled').checked = false;
@@ -2017,6 +2100,13 @@
             toggleFadeFields();
             document.getElementById('custom-is-treasure-exit').checked = !!key.isTreasureExit;
             document.getElementById('custom-treasure-id').value = key.treasureTargetId || '0';
+            document.getElementById('custom-is-level-portal').checked = !!key.isLevelPortal;
+            document.getElementById('custom-portal-id').value = key.portalId || '';
+            document.getElementById('custom-portal-level-name').value = key.portalLevelName || key.portalTargetWorld || '';
+            document.getElementById('custom-portal-type').value = key.portalTargetType || 'external';
+            if (key.portalTargetFile) document.getElementById('custom-portal-file').value = key.portalTargetFile;
+            document.getElementById('custom-portal-index').value = key.portalTargetIndex || '0';
+            toggleLevelPortalFields();
             document.getElementById('custom-is-checkpoint').checked = !!key.isCheckpoint;
             document.getElementById('custom-save-door-states').checked = key.saveDoorStates !== false;
             document.getElementById('custom-respawn-enabled').checked = !!key.respawnMessage;
@@ -2054,6 +2144,7 @@
             document.getElementById('qa-key-form').style.display = 'none';
             document.getElementById('qa-info-form').style.display = 'none';
             document.getElementById('qa-treasure-form').style.display = 'none';
+            document.getElementById('qa-level-portal-form').style.display = 'none';
             document.getElementById('qa-block-maker').style.display = 'none';
         }
 
@@ -2062,6 +2153,7 @@
             document.getElementById('qa-key-form').style.display = 'none';
             document.getElementById('qa-info-form').style.display = 'none';
             document.getElementById('qa-treasure-form').style.display = 'none';
+            document.getElementById('qa-level-portal-form').style.display = 'none';
             document.getElementById('qa-block-maker').style.display = 'none';
             document.getElementById('quick-add-overlay').classList.add('open');
             renderDoorList();
@@ -2084,6 +2176,71 @@
                 });
                 document.getElementById('qa-treasure-id').value = maxId + 1;
             }
+        }
+
+        function showQuickAddLevelPortalForm() {
+            if (!mapData) { alert('No map loaded.'); return; }
+            document.getElementById('qa-menu').style.display = 'none';
+            document.getElementById('qa-key-form').style.display = 'none';
+            document.getElementById('qa-info-form').style.display = 'none';
+            document.getElementById('qa-treasure-form').style.display = 'none';
+            document.getElementById('qa-block-maker').style.display = 'none';
+            document.getElementById('qa-level-portal-form').style.display = '';
+            document.getElementById('qa-portal-name').value = '';
+            document.getElementById('qa-portal-colour').value = '#3a6a8a';
+            document.getElementById('qa-portal-id').value = 'portal_' + (modularWorld ? modularWorld.name.toLowerCase().replace(/[^a-z0-9]/g,'_') : 'level') + '_' + getNextTileId();
+            document.getElementById('qa-portal-level-name').value = '';
+            document.getElementById('qa-portal-type').value = 'external';
+            togglePortalTargetFields();
+        }
+
+        function togglePortalTargetFields() {
+            var type = document.getElementById('qa-portal-type').value;
+            document.getElementById('qa-portal-external-row').style.display = type === 'external' ? '' : 'none';
+            document.getElementById('qa-portal-internal-row').style.display = type === 'internal' ? '' : 'none';
+        }
+
+        function confirmQuickAddLevelPortal() {
+            if (!mapData) { alert('No map loaded.'); return; }
+            var name = document.getElementById('qa-portal-name').value.trim();
+            if (!name) { alert('Please enter a name for the level portal.'); return; }
+            var portalId = document.getElementById('qa-portal-id').value.trim();
+            if (!portalId) { alert('Please enter a Portal ID.'); return; }
+            var levelName = document.getElementById('qa-portal-level-name').value.trim();
+            if (!levelName) { alert('Please enter a level name.'); return; }
+            var type = document.getElementById('qa-portal-type').value;
+            var colour = document.getElementById('qa-portal-colour').value;
+            var id = getNextTileId();
+            var targetFile = '';
+            var targetIndex = 0;
+            if (type === 'external') {
+                targetFile = document.getElementById('qa-portal-file').value;
+            } else {
+                targetIndex = parseInt(document.getElementById('qa-portal-index').value) || 0;
+            }
+            if (!mapData.scripts) mapData.scripts = {};
+            var key = {
+                id: id, colour: colour, name: name,
+                solid: 0,
+                isLevelPortal: true,
+                portalId: portalId,
+                portalTargetType: type,
+                portalTargetFile: type === 'external' ? targetFile : undefined,
+                portalTargetIndex: type === 'internal' ? targetIndex : undefined,
+                portalTargetWorld: levelName,
+                portalLevelName: levelName
+            };
+            var sn = 'portal_' + id;
+            mapData.scripts[sn] = 'this.goToLevelPortal("' + portalId.replace(/"/g,'\\"') + '");';
+            key.script = sn;
+            mapData.keys.push(key);
+            hideQuickAddDialog();
+            renderPaletteTiles();
+            renderPaletteEditor();
+            renderGrid();
+            renderScripts();
+            pushHistory();
+            document.getElementById('status').textContent = 'Added level portal "' + name + '" (ID ' + id + ') -> ' + (type === 'external' ? targetFile : 'Level ' + targetIndex);
         }
 
         function confirmQuickAddTreasure() {
@@ -2407,6 +2564,12 @@
             var hasDeath = document.getElementById('custom-is-death').checked;
             var hasTreasureExit = document.getElementById('custom-is-treasure-exit').checked;
             var treasureTargetId = parseInt(document.getElementById('custom-treasure-id').value) || 0;
+            var hasLevelPortal = document.getElementById('custom-is-level-portal').checked;
+            var portalId = document.getElementById('custom-portal-id').value.trim();
+            var portalLevelName = document.getElementById('custom-portal-level-name').value.trim();
+            var portalType = document.getElementById('custom-portal-type').value;
+            var portalFile = document.getElementById('custom-portal-file').value;
+            var portalIndex = parseInt(document.getElementById('custom-portal-index').value) || 0;
             var hasCheckpoint = document.getElementById('custom-is-checkpoint').checked;
             var hasCC = document.getElementById('custom-colour-change').checked;
             var hasTask = document.getElementById('custom-has-task').checked;
@@ -2475,6 +2638,31 @@
             } else {
                 delete key.isTreasureExit;
                 delete key.treasureTargetId;
+            }
+
+            // Level portal
+            if (hasLevelPortal && portalId) {
+                key.isLevelPortal = true;
+                key.portalId = portalId;
+                key.portalTargetType = portalType;
+                key.portalLevelName = portalLevelName;
+                key.portalTargetWorld = portalLevelName;
+                if (portalType === 'external') {
+                    key.portalTargetFile = portalFile;
+                    delete key.portalTargetIndex;
+                } else {
+                    key.portalTargetIndex = portalIndex;
+                    delete key.portalTargetFile;
+                }
+                scriptParts.push('this.goToLevelPortal("' + portalId.replace(/"/g,'\\"') + '");');
+            } else {
+                delete key.isLevelPortal;
+                delete key.portalId;
+                delete key.portalTargetType;
+                delete key.portalTargetFile;
+                delete key.portalTargetIndex;
+                delete key.portalTargetWorld;
+                delete key.portalLevelName;
             }
 
             // Death (special: engine checks key.script === "death")
@@ -2823,6 +3011,7 @@
         function getTileLabel(key) {
             if (!key || key.id === 0 || key.id === undefined) return null;
             if (key.id >= 1 && key.id <= 15) return null;
+            if (key.isLevelPortal) return 'P';
             if (key.script) return 's';
             if (key.isTask) return 'tsk';
             if (key.completesTaskId > 0) return 'cmp';
@@ -3034,6 +3223,16 @@
                 }
             });
 
+            // Level portal validation
+            mapData.keys.forEach(function(k) {
+                if (k.isLevelPortal) {
+                    if (!k.portalId) warnings.push('Level portal "' + (k.name || 'ID ' + k.id) + '" has no portal ID set.');
+                    if (!k.portalTargetWorld) warnings.push('Level portal "' + (k.name || 'ID ' + k.id) + '" has no target world set.');
+                    if (k.portalTargetType === 'external' && !k.portalTargetFile) warnings.push('Level portal "' + (k.name || 'ID ' + k.id) + '" has no target file set.');
+                    if (k.portalTargetType === 'internal' && (k.portalTargetIndex === undefined || k.portalTargetIndex === null)) warnings.push('Level portal "' + (k.name || 'ID ' + k.id) + '" has no target index set.');
+                }
+            });
+
             // Script errors
             mapData.keys.forEach(function(k) {
                 if (k.script && k.script !== 'death' && mapData.scripts && typeof mapData.scripts[k.script] !== 'string') {
@@ -3077,6 +3276,19 @@
                 var label = idInput ? idInput.closest('label') : null;
                 if (label) label.style.opacity = hasTE ? '1' : '0.4';
             }
+        }
+
+        function toggleLevelPortalFields() {
+            var checked = document.getElementById('custom-is-level-portal').checked;
+            document.getElementById('portal-id-row').style.display = checked ? '' : 'none';
+            document.getElementById('portal-type-row').style.display = checked ? '' : 'none';
+            if (checked) toggleCustomPortalFields();
+        }
+
+        function toggleCustomPortalFields() {
+            var type = document.getElementById('custom-portal-type').value;
+            document.getElementById('portal-external-row').style.display = type === 'external' ? '' : 'none';
+            document.getElementById('portal-internal-row').style.display = type === 'internal' ? '' : 'none';
         }
 
         function toggleCpOnceFields() {
@@ -3556,6 +3768,7 @@
                 case 'timer': return 'After ' + (t.params.delay || '?') + 's' + onceLabel;
                 case 'checkpoint': return 'When Checkpoint ' + (t.params.checkpointId || '?') + ' activated' + onceLabel;
                 case 'task_completed': return 'When Task #' + (t.params.taskId || '?') + ' completed' + onceLabel;
+                case 'level_completed': return 'When World "' + (t.params.targetWorld || '?') + '" fully completed' + onceLabel;
                 default: return 'Trigger: ' + t.type + onceLabel;
             }
         }
@@ -3765,6 +3978,11 @@
                 case 'task_completed':
                     return '<div class="auto-form-row">'
                         + '<label>Task ID: <input type="number" data-param="taskId" value="1" min="1" style="width:52px"></label>'
+                        + '</div>';
+                case 'level_completed':
+                    return '<div class="auto-form-row">'
+                        + '<label>Target World Name: <input type="text" data-param="targetWorld" value="" placeholder="e.g. World 1" style="width:160px"></label>'
+                        + '<span style="font-size:10px;color:#666;">Fires on map load if all non-treasure levels in this world are completed</span>'
                         + '</div>';
                 default:
                     return '';

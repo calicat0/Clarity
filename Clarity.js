@@ -78,6 +78,17 @@ var Clarity = function () {
     this._treasurePromptTileX = null;
     this._treasurePromptTileY = null;
     this.onTreasurePromptDismiss = null;
+    this._portalPromptActive = false;
+    this._portalPromptTileX = null;
+    this._portalPromptTileY = null;
+    this.onPortalPromptDismiss = null;
+    this.portalReturnWorld = null;
+    this.portalReturnIndex = null;
+    this.portalReturnState = null;
+    this.onCheckWorldCompleted = null;
+    this.onLoadExternalPortal = null;
+    this.onBeforePortalExit = null;
+    this.onAllLevelsCompleted = null;
     this._fadingBlocks = {};
     this._automationTimers = [];
 
@@ -216,6 +227,7 @@ Clarity.prototype.load_map = function (map) {
     this.clearTasks();
     this.clearTrails();
     this.cancelTreasurePrompt();
+    this.cancelPortalPrompt();
     this._fadingBlocks = {};
     this._automationTimers.forEach(function(t) { clearTimeout(t); });
     this._automationTimers = [];
@@ -246,7 +258,7 @@ Clarity.prototype.loadModularMap = function (index) {
         var retIdx = this.treasureReturnIndex;
         mapData.scripts.next_level = 'this.checkpoint=null;if(typeof this.onLevelCompleted==="function")this.onLevelCompleted(this.modularIndex);this.treasureReturnIndex=null;this.loadModularMap(' + retIdx + ');';
     } else {
-        mapData.scripts.next_level = 'this.checkpoint=null;if(typeof this.onLevelCompleted==="function")this.onLevelCompleted(this.modularIndex);if(this.modularData){var nx=this.findNextMainlineLevel(this.modularIndex+1);if(nx>=0){this.loadModularMap(nx);}else{this.showMessage("All levels complete!");}}else{this.showMessage("You win!");this.load_map(this.source_map);}';
+        mapData.scripts.next_level = 'this.checkpoint=null;if(typeof this.onLevelCompleted==="function")this.onLevelCompleted(this.modularIndex);if(this.modularData){var nx=this.findNextMainlineLevel(this.modularIndex+1);if(nx>=0){this.loadModularMap(nx);}else{if(typeof this.onAllLevelsCompleted==="function")this.onAllLevelsCompleted(this.modularData.name);this.showMessage("All levels complete!");}}else{this.showMessage("You win!");this.load_map(this.source_map);}';
     }
     mapData.scripts.death = '';
     this.source_map = mapData;
@@ -256,6 +268,25 @@ Clarity.prototype.loadModularMap = function (index) {
         this._savedLevelState = null;
     }
     this.limit_viewport = true;
+    this.runLevelCompletedAutomations();
+};
+
+Clarity.prototype.runLevelCompletedAutomations = function () {
+    if (!this.current_map || !this.current_map.automations || typeof this.onCheckWorldCompleted !== 'function') return;
+    var self = this;
+    this.current_map.automations.forEach(function (auto) {
+        if (auto.enabled === false) return;
+        if (!auto.trigger || auto.trigger.type !== 'level_completed') return;
+        var world = auto.trigger.params && auto.trigger.params.targetWorld;
+        if (!world || !self.onCheckWorldCompleted(world)) return;
+        if (auto.once) {
+            if (!self.oneTimeTriggered) self.oneTimeTriggered = {};
+            var key = 'auto_level_completed_' + auto.id + '_' + world;
+            if (self.oneTimeTriggered[key]) return;
+            self.oneTimeTriggered[key] = true;
+        }
+        self.executeAutomationActions(auto.actions);
+    });
 };
 
 Clarity.prototype.get_tile = function (x, y) {
@@ -994,6 +1025,21 @@ Clarity.prototype.update = function () {
         }
     }
 
+    if (this._portalPromptActive && this._portalPromptTileX !== null && this.tile_size) {
+        var px2 = Math.round(this.player.loc.x / this.tile_size);
+        var py2 = Math.round(this.player.loc.y / this.tile_size);
+        if (Math.abs(px2 - this._portalPromptTileX) > 5 || Math.abs(py2 - this._portalPromptTileY) > 5) {
+    this._portalPromptActive = false;
+    this._portalPromptTileX = null;
+    this._portalPromptTileY = null;
+    this._portalSelectedIndex = -1;
+            if (typeof this.onPortalPromptDismiss === 'function') {
+                this.onPortalPromptDismiss();
+                this.onPortalPromptDismiss = null;
+            }
+        }
+    }
+
     for (var fbKey in this._fadingBlocks) {
         var fb = this._fadingBlocks[fbKey];
         fb.timer += this.dt / 60;
@@ -1353,6 +1399,65 @@ Clarity.prototype._doGoToTreasure = function (treasureId) {
         }
     }
     this.error('Treasure map with ID ' + treasureId + ' not found.');
+    return false;
+};
+
+Clarity.prototype.cancelPortalPrompt = function () {
+    this._portalPromptActive = false;
+    this._portalPromptTileX = null;
+    this._portalPromptTileY = null;
+    this.onPortalPromptDismiss = null;
+};
+
+Clarity.prototype.goToLevelPortal = function (portalId) {
+    if (!this.current_map) return false;
+    if (this._portalPromptActive) return false;
+    var portal = this.current_map.keys.find(function (k) { return k.isLevelPortal && k.portalId === portalId; });
+    if (!portal) { this.error('Level portal with ID "' + portalId + '" not found.'); return false; }
+    if (typeof this.onPromptLevelPortalReentry === 'function') {
+        var self = this;
+        this._portalPromptActive = true;
+        this._portalPromptTileX = Math.round(this.player.loc.x / this.tile_size);
+        this._portalPromptTileY = Math.round(this.player.loc.y / this.tile_size);
+        this.onPromptLevelPortalReentry(portal, function () {
+            self._portalPromptActive = false;
+            self._portalPromptTileX = null;
+            self._portalPromptTileY = null;
+            self._doGoToLevelPortal(portal);
+        });
+        return true;
+    }
+    return this._doGoToLevelPortal(portal);
+};
+
+Clarity.prototype._doGoToLevelPortal = function (portal) {
+    var targetIdx = this._portalSelectedIndex >= 0 ? this._portalSelectedIndex : -1;
+    this._portalSelectedIndex = -1;
+    if (portal.portalTargetType === 'internal') {
+        this.portalReturnWorld = this.modularData ? this.modularData.name : null;
+        this.portalReturnIndex = this.modularIndex;
+        this.portalReturnState = this.getLevelState();
+        if (typeof this.onBeforePortalExit === 'function') {
+            this.onBeforePortalExit(this.modularIndex, this.portalReturnState);
+        }
+        this.checkpoint = null;
+        this.oneTimeTriggered = {};
+        this.loadModularMap(targetIdx >= 0 ? targetIdx : portal.portalTargetIndex);
+        return true;
+    } else if (portal.portalTargetType === 'external' && portal.portalTargetFile) {
+        this.portalReturnWorld = this.modularData ? this.modularData.name : null;
+        this.portalReturnIndex = this.modularIndex;
+        this.portalReturnState = this.getLevelState();
+        if (typeof this.onBeforePortalExit === 'function') {
+            this.onBeforePortalExit(this.modularIndex, this.portalReturnState);
+        }
+        this.checkpoint = null;
+        this.oneTimeTriggered = {};
+        if (typeof this.onLoadExternalPortal === 'function') {
+            this.onLoadExternalPortal(portal, targetIdx);
+        }
+        return true;
+    }
     return false;
 };
 
