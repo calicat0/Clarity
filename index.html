@@ -939,7 +939,13 @@
         game.set_viewport(VP_W, VP_H);
 
         game.onCheckWorldCompleted = function(worldName) {
-            return isWorldFullyCompleted(worldName);
+            if (isWorldFullyCompleted(worldName)) return true;
+            var lc = loadLevelCounts();
+            var key = worldName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            for (var wn in lc) {
+                if (wn.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === key) return isWorldFullyCompleted(wn);
+            }
+            return false;
         };
 
         game.onPromptLevelPortalReentry = function(portal, confirmFn) {
@@ -1181,7 +1187,9 @@
 
         function isLevelDiscovered(worldName, levelIndex) {
             var cps = loadCheckpoints();
-            return !!(cps[worldName] && cps[worldName][String(levelIndex)]);
+            if (cps[worldName] && cps[worldName][String(levelIndex)]) return true;
+            var comps = loadCompletions();
+            return !!(comps[worldName] && comps[worldName][String(levelIndex)]);
         }
 
         /* ---- Level State Persistence (localStorage) ---- */
@@ -1278,12 +1286,13 @@
                         nameSpan.textContent = '???';
                         nameSpan.classList.add('hidden');
                     }
-                } else if (discovered || cpEnabled) {
-                    nameSpan.textContent = m.name || 'Level ' + (i + 1);
-                    nameSpan.classList.add('found');
                 } else {
-                    nameSpan.textContent = '???';
-                    nameSpan.classList.add('hidden');
+                    nameSpan.textContent = m.name || 'Level ' + (i + 1);
+                    if (discovered || cpEnabled) {
+                        nameSpan.classList.add('found');
+                    } else {
+                        nameSpan.classList.add('hidden');
+                    }
                 }
                 row.appendChild(nameSpan);
 
@@ -1385,7 +1394,6 @@
 
         function showLevelPortalPrompt(portal, onGo) {
             var worldName = portal.portalLevelName || portal.portalTargetWorld || 'Unknown';
-            var completed = isWorldFullyCompleted(portal.portalTargetWorld);
             var selectedIndex = -1;
 
             var overlay = document.createElement('div');
@@ -1405,18 +1413,19 @@
 
             function populateLevels(data) {
                 levelListEl.innerHTML = '';
+                var actualWorld = data ? data.name : portal.portalTargetWorld;
                 if (!data || !data.maps) {
                     levelListEl.innerHTML = '<div style="color:#666;padding:4px;">' +
-                        (completed ? '✓ Completed' : 'Not yet completed') + '</div>';
+                        (isWorldFullyCompleted(actualWorld) ? '✓ Completed' : 'Not yet completed') + '</div>';
                     return;
                 }
 
                 var comps = loadCompletions();
-                var worldComps = comps[portal.portalTargetWorld] || {};
+                var worldComps = comps[actualWorld] || {};
 
                 var firstUnfinished = -1;
                 data.maps.forEach(function(m, i) {
-                    var discovered = isLevelDiscovered(portal.portalTargetWorld, i);
+                    var discovered = isLevelDiscovered(actualWorld, i);
                     var cpEnabled = !!m.checkpoint;
                     var canWarp = discovered || cpEnabled;
                     if (canWarp && m.type !== 'treasure' && !worldComps[String(i)]) {
@@ -1426,7 +1435,7 @@
                 selectedIndex = firstUnfinished >= 0 ? firstUnfinished : 0;
 
                 data.maps.forEach(function(m, i) {
-                    var discovered = isLevelDiscovered(portal.portalTargetWorld, i);
+                    var discovered = isLevelDiscovered(actualWorld, i);
                     var cpEnabled = !!m.checkpoint;
                     var canWarp = discovered || cpEnabled;
                     var isTreasure = m.type === 'treasure';
@@ -1488,6 +1497,10 @@
             }
 
             var data = _worldDataCache[portal.portalTargetWorld];
+            if (!data && portal.portalTargetFile) {
+                var rn = worldNameFromFile(portal.portalTargetFile);
+                if (rn) data = _worldDataCache[rn];
+            }
             if (data) {
                 populateLevels(data);
             } else if (portal.portalTargetFile) {
@@ -1502,16 +1515,19 @@
                     playBtn.style.cursor = '';
                     if (fetched) {
                         _worldDataCache[fetched.name] = fetched;
+                        if (portal.portalTargetWorld && portal.portalTargetWorld !== fetched.name) {
+                            _worldDataCache[portal.portalTargetWorld] = fetched;
+                        }
                         levelListEl.innerHTML = '';
                         populateLevels(fetched);
                     } else {
                         levelListEl.innerHTML = '<div style="color:#666;padding:4px;">' +
-                            (completed ? '✓ Completed' : 'Not yet completed') + '</div>';
+                            (isWorldFullyCompleted(portal.portalTargetWorld) ? '✓ Completed' : 'Not yet completed') + '</div>';
                     }
                 });
             } else {
                 levelListEl.innerHTML = '<div style="color:#666;padding:4px;">' +
-                    (completed ? '✓ Completed' : 'Not yet completed') + '</div>';
+                    (isWorldFullyCompleted(portal.portalTargetWorld) ? '✓ Completed' : 'Not yet completed') + '</div>';
             }
 
             function dismissPrompt() {
@@ -1639,19 +1655,32 @@
             } catch (e) { return {}; }
         }
 
+        function worldNameFromFile(file) {
+            var fileKey = file.replace(/\.mod\.js$/i, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            var lc = loadLevelCounts();
+            for (var wn in lc) {
+                if (wn.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === fileKey) return wn;
+            }
+            return null;
+        }
+        function resolveWorldName(portal) {
+            if (portal.portalTargetFile) {
+                var n = worldNameFromFile(portal.portalTargetFile);
+                if (n) return n;
+            }
+            return portal.portalTargetWorld;
+        }
         function updatePortalBlockVisuals() {
             if (!game.current_map || !game.current_map.keys) return;
             var changed = false;
             game.current_map.keys.forEach(function (k) {
                 if (k.isLevelPortal) {
-                    var completed = isWorldFullyCompleted(k.portalTargetWorld);
+                    var wName = resolveWorldName(k);
+                    var completed = isWorldFullyCompleted(wName);
                     var completedColour = '#4CAF50';
                     if (completed && k.colour !== completedColour) {
                         k.colour = completedColour;
                         changed = true;
-                    } else if (!completed) {
-                        // Restore original colour from source data if needed
-                        // (handled by reloading the map fresh each time)
                     }
                 }
             });
