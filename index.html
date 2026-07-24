@@ -1635,11 +1635,7 @@
             var levelCounts = loadLevelCounts();
             var count = levelCounts[worldName];
             if (!count) return false;
-            var completedCount = 0;
-            for (var i = 0; i < count; i++) {
-                if (worldComps[String(i)]) completedCount++;
-            }
-            return completedCount >= count;
+            return Object.keys(worldComps).length >= count;
         }
 
         function saveLevelCount(worldName, count) {
